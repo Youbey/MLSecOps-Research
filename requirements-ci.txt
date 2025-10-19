@@ -1,0 +1,5 @@
+pytest
+bandit
+semgrep
+pip-audit
+numpy
