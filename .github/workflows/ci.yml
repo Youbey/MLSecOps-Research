@@ -2,7 +2,7 @@ name: MLSecOps CI Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
 
 permissions:
   contents: read
