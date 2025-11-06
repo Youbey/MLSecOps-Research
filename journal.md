@@ -1,31 +1,23 @@
-# Journal de bord du projet
+# Project Journal
 
-## Semaine 45 - 3/11 au 7/11
+## Week 45 - 3/11 to 7/11
 
-### Objectifs de la semaine
+### Week Objectifs
 - Understanding / Reading Research papers
 - Finishing a first version of the report
-- Preparing slides for the pitch 
+- Preparing slides for the pitch
 
-### Travail réalisé
-- **Tâche 1** : v2 of state of the art.
-- **Tâche 2** : Surfing 8 research papers about attacks onf ederated learning.
+### Work done
+- **Task 1** : v2 of state of the art.
+- **Task 2** : Surfing 8 research papers about attacks on federated learning.
 
-### Problèmes rencontrés
-- **Problème 1** : Limited by time.
-    - Solution envisagée : Working off hours
-    - Solution appliquée : Using Holday to read a paper
+### Problems found
+- **Problem 1** : Limited by time.
+    - Solution considered : Working off hours
+    - Solution applied : Using Holiday to read a paper
 
-### Prochaines étapes
-- [Tâche 1 pour la semaine prochaine]
-- [Tâche 2 pour la semaine prochaine]
-- [Tâche 3 pour la semaine prochaine]
-
-### Notes supplémentaires
+### Notes
 - [Note 1]
-- [Note 2]
-- [Note 3]
 
-### Notification aux tuteurs
-@tuteur1 @tuteur2
-- [Message de notification]
+### Notification to tutors
+- Should we detail more about attacks, or simply giving an explanation and referencing the work to view if more details are needed is sufficient
