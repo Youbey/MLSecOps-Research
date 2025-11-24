@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Federated Learning Security Hub</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -15,6 +16,7 @@
         :root {
             --primary: #3b82f6;
             --primary-dark: #2563eb;
+            --primary-light: #93c5fd;
             --accent: #8b5cf6;
             --accent-light: #a78bfa;
             --background: #0f172a;
@@ -25,6 +27,8 @@
             --border: #475569;
             --success: #10b981;
             --warning: #f59e0b;
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            --hover-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
         }
 
         body {
@@ -53,6 +57,7 @@
             backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             padding: 16px 0;
+            background: rgba(15, 17, 42, 0.85);
         }
 
         .nav-content {
@@ -65,12 +70,16 @@
         }
 
         .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             font-size: 1.25rem;
             font-weight: 700;
-            background: var(--primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--primary);
+        }
+
+        .nav-logo i {
+            font-size: 1.5rem;
         }
 
         .nav-links {
@@ -83,10 +92,26 @@
             font-weight: 500;
             font-size: 0.95rem;
             transition: color 0.3s ease;
+            position: relative;
         }
 
         .nav-links a:hover {
             color: var(--text-primary);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
         }
 
         /* Hero Section */
@@ -95,31 +120,6 @@
             padding-bottom: 80px;
             position: relative;
             overflow: hidden;
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 1000px;
-            height: 1000px;
-
-            border-radius: 50%;
-            z-index: -1;
-        }
-
-        .hero::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 800px;
-            height: 800px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, transparent 70%);
-            border-radius: 50%;
-            z-index: -1;
         }
 
         .hero-content {
@@ -139,10 +139,21 @@
         }
 
         .hero h1 .highlight {
-background: var(--primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--primary);
+            position: relative;
+            display: inline-block;
+        }
+
+        .hero h1 .highlight::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background-color: rgba(59, 130, 246, 0.2);
+            z-index: -1;
+            border-radius: 4px;
         }
 
         .hero p {
@@ -176,14 +187,16 @@ background: var(--primary);
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            background-color: var(--primary);
             color: white;
             border: 1px solid var(--primary);
+            box-shadow: var(--card-shadow);
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+            box-shadow: var(--hover-shadow);
+            background-color: var(--primary-dark);
         }
 
         .btn-secondary {
@@ -195,6 +208,7 @@ background: var(--primary);
         .btn-secondary:hover {
             background: rgba(255, 255, 255, 0.05);
             border-color: var(--text-secondary);
+            transform: translateY(-2px);
         }
 
         /* Features Grid */
@@ -219,12 +233,33 @@ background: var(--primary);
             padding: 32px;
             transition: all 0.3s ease;
             backdrop-filter: blur(10px);
+            box-shadow: var(--card-shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background-color: var(--primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
         }
 
         .feature-card:hover {
             background: rgba(255, 255, 255, 0.04);
             border-color: rgba(59, 130, 246, 0.3);
             transform: translateY(-4px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
         }
 
         .feature-card h3 {
@@ -232,6 +267,13 @@ background: var(--primary);
             font-weight: 700;
             margin-bottom: 12px;
             color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-card h3 i {
+            color: var(--primary);
         }
 
         .feature-card p {
@@ -252,6 +294,13 @@ background: var(--primary);
             font-weight: 800;
             margin-bottom: 16px;
             color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        section h2 i {
+            color: var(--primary);
         }
 
         .section-subtitle {
@@ -269,6 +318,7 @@ background: var(--primary);
             padding: 40px;
             backdrop-filter: blur(10px);
             margin-bottom: 40px;
+            box-shadow: var(--card-shadow);
         }
 
         .pdf-viewer h3 {
@@ -323,14 +373,33 @@ background: var(--primary);
             backdrop-filter: blur(10px);
             display: flex;
             flex-direction: column;
-            group: article;
+            box-shadow: var(--card-shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .article-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background-color: var(--primary);
+            transform: scaleY(0);
+            transform-origin: top;
+            transition: transform 0.3s ease;
         }
 
         .article-card:hover {
             background: rgba(59, 130, 246, 0.08);
             border-color: rgba(59, 130, 246, 0.4);
             transform: translateY(-8px);
-            box-shadow: 0 12px 40px rgba(59, 130, 246, 0.1);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .article-card:hover::before {
+            transform: scaleY(1);
         }
 
         .article-title {
@@ -359,16 +428,21 @@ background: var(--primary);
             font-weight: 600;
             font-size: 0.9rem;
             transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
 
         .btn-view:hover {
             background: rgba(59, 130, 246, 0.1);
             border-color: var(--primary);
+            transform: translateY(-2px);
         }
 
         .btn-download {
             flex: 1;
-            background: #7c3aed;
+            background: var(--accent);
             color: white;
             border: none;
             padding: 10px 16px;
@@ -377,11 +451,16 @@ background: var(--primary);
             font-weight: 600;
             font-size: 0.9rem;
             transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
 
         .btn-download:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+            background: var(--accent-light);
         }
 
         /* Journal Section */
@@ -391,6 +470,7 @@ background: var(--primary);
             border-radius: 16px;
             padding: 40px;
             backdrop-filter: blur(10px);
+            box-shadow: var(--card-shadow);
         }
 
         .journal-content {
@@ -494,6 +574,9 @@ background: var(--primary);
             margin-bottom: 12px;
             font-size: 0.9rem;
             transition: color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .footer-section a:hover {
@@ -552,11 +635,14 @@ background: var(--primary);
     <!-- Navigation -->
     <nav>
         <div class="nav-content">
-            <div class="nav-logo">FL Security Hub</div>
+            <div class="nav-logo">
+                <i class="fas fa-shield-alt"></i>
+                <span>FL Security Hub</span>
+            </div>
             <div class="nav-links">
-                <a href="#sota">Documentation</a>
-                <a href="#articles">Papers</a>
-                <a href="#journal">Journal</a>
+                <a href="#sota"><i class="fas fa-file-alt"></i> Documentation</a>
+                <a href="#articles"><i class="fas fa-book"></i> Papers</a>
+                <a href="#journal"><i class="fas fa-newspaper"></i> Journal</a>
             </div>
         </div>
     </nav>
@@ -567,15 +653,33 @@ background: var(--primary);
             <h1>Secure Federated Learning<br><span class="highlight">Research & Analysis</span></h1>
             <p>Comprehensive research on federated learning security, threat models, attack vectors, and defense mechanisms. Explore our collection of peer-reviewed papers and the latest security insights.</p>
             <div class="hero-buttons">
-                <a href="#sota" class="btn btn-primary">Explore SOTA</a>
-                <a href="#articles" class="btn btn-secondary">View Papers</a>
+                <a href="#sota" class="btn btn-primary"><i class="fas fa-search"></i> Explore SOTA</a>
+                <a href="#articles" class="btn btn-secondary"><i class="fas fa-download"></i> View Papers</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3><i class="fas fa-lock"></i> Privacy Protection</h3>
+                <p>Advanced techniques to protect user data privacy while training machine learning models across distributed devices.</p>
+            </div>
+            <div class="feature-card">
+                <h3><i class="fas fa-shield-alt"></i> Security Frameworks</h3>
+                <p>Comprehensive security frameworks designed to protect federated learning systems from various attack vectors.</p>
+            </div>
+            <div class="feature-card">
+                <h3><i class="fas fa-chart-line"></i> Performance Analysis</h3>
+                <p>In-depth analysis of federated learning performance metrics and optimization strategies.</p>
             </div>
         </div>
     </section>
 
     <!-- SOTA PDF Section -->
     <section id="sota">
-        <h2>State-of-the-Art Document</h2>
+        <h2><i class="fas fa-file-pdf"></i> State-of-the-Art Document</h2>
         <p class="section-subtitle">Comprehensive overview of federated learning security, threat models, and defense mechanisms.</p>
         <div class="pdf-viewer">
             <div class="pdf-container">
@@ -586,7 +690,7 @@ background: var(--primary);
 
     <!-- Papers Section -->
     <section id="articles">
-        <h2>Research Papers</h2>
+        <h2><i class="fas fa-book-open"></i> Research Papers</h2>
         <p class="section-subtitle">Peer-reviewed papers and studies advancing the field of federated learning security.</p>
         <div class="articles-grid" id="articlesGrid">
             <div class="loading">Loading papers...</div>
@@ -595,7 +699,7 @@ background: var(--primary);
 
     <!-- Journal Section -->
     <section id="journal">
-        <h2>Research Journal</h2>
+        <h2><i class="fas fa-newspaper"></i> Research Journal</h2>
         <p class="section-subtitle">Latest insights, discoveries, and detailed notes on federated learning security research.</p>
         <div class="journal-container">
             <div class="journal-content" id="journalContent">
@@ -609,21 +713,21 @@ background: var(--primary);
         <div class="footer-content">
             <div class="footer-section">
                 <h4>Resources</h4>
-                <a href="#sota">SOTA Document</a>
-                <a href="#articles">Research Papers</a>
-                <a href="#journal">Journal</a>
+                <a href="#sota"><i class="fas fa-file-alt"></i> SOTA Document</a>
+                <a href="#articles"><i class="fas fa-book"></i> Research Papers</a>
+                <a href="#journal"><i class="fas fa-newspaper"></i> Journal</a>
             </div>
             <div class="footer-section">
                 <h4>Topics</h4>
-                <a href="#">Federated Learning</a>
-                <a href="#">Security</a>
-                <a href="#">Privacy</a>
+                <a href="#"><i class="fas fa-brain"></i> Federated Learning</a>
+                <a href="#"><i class="fas fa-shield-alt"></i> Security</a>
+                <a href="#"><i class="fas fa-user-secret"></i> Privacy</a>
             </div>
             <div class="footer-section">
                 <h4>Learn More</h4>
-                <a href="#">GitHub</a>
-                <a href="#">Documentation</a>
-                <a href="#">Contact</a>
+                <a href="#"><i class="fab fa-github"></i> GitHub</a>
+                <a href="#"><i class="fas fa-book"></i> Documentation</a>
+                <a href="#"><i class="fas fa-envelope"></i> Contact</a>
             </div>
         </div>
         <div class="footer-bottom">
@@ -654,8 +758,8 @@ background: var(--primary);
                 <div class="article-card">
                     <div class="article-title">${paper.title}</div>
                     <div class="article-actions">
-                        <a href="${paper.file}" target="_blank" class="btn-view">View</a>
-                        <a href="${paper.file}" download class="btn-download">Download</a>
+                        <a href="${paper.file}" target="_blank" class="btn-view"><i class="fas fa-eye"></i> View</a>
+                        <a href="${paper.file}" download class="btn-download"><i class="fas fa-download"></i> Download</a>
                     </div>
                 </div>
             `).join('');
@@ -664,8 +768,8 @@ background: var(--primary);
         async function loadJournal() {
             const content = document.getElementById('journalContent');
             try {
-                const response = await window.fs.readFile('../journal.md', { encoding: 'utf8' });
-                content.innerHTML = markdownToHtml(response);
+                const response = await fetch('../journal.md');
+                content.innerHTML = markdownToHtml(journalContent);
             } catch (error) {
                 content.innerHTML = `<div class="error"><strong>Journal not found</strong><br>Could not load journal.md</div>`;
             }
@@ -693,7 +797,8 @@ background: var(--primary);
                 .join('\n')
                 .replace(/(<li>.*?<\/li>)/s, '<ul>$1</ul>')
                 .replace(/<\/li>\s*<\/ul>\s*<ul>\s*<li>/g, '</li><li>')
-                .replace(/<p><\/p>/g, '');
+                .replace(/<p><\/p>/g, '')
+                .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
             return html;
         }
 
