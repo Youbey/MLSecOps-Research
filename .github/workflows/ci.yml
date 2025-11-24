@@ -21,6 +21,8 @@ jobs:
         uses: xu-cheng/latex-action@v3
         with:
           root_file: docs/SOTA/main.tex
+          latexmk_use_biber: false 
+          extra_args: "-shell-escape"
 
       - name: Commit PDF
         run: |
