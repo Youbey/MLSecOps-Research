@@ -22,7 +22,9 @@ jobs:
         with:
           root_file: docs/SOTA/main.tex
           latexmk_use_biber: false 
-          extra_args: "-shell-escape"
+          latexmk_shell_escape: true
+          extra_args: "-interaction=nonstopmode -file-line-error"
+          continue_on_error: true
 
       - name: Commit PDF
         run: |
