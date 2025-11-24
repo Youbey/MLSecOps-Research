@@ -21,12 +21,12 @@ jobs:
       - name: Install LaTeX
         uses: xu-cheng/latex-action@v3
         with:
-          root_file: docs/report.tex
+          root_file: docs/SOTA/main.tex
 
       - name: Commit PDF
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add docs/report.pdf
+          git add docs/SOTA/report.pdf
           git commit -m "Auto-build PDF from report.tex" || echo "No changes to commit"
           git push
