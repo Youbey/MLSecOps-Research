@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Federated Learning Security Hub</title>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,12 +12,31 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --accent: #8b5cf6;
+            --accent-light: #a78bfa;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --surface-light: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --border: #475569;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
         body {
-            font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #0f0f12 0%, #1a1a22 100%);
-            color: #e4e4e7;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: rgba(25, 25, 29, 1);
+            color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
+            background-image: url("./web/noise-KGQF6VKO.png");
+            background-size: 200px 200px;
+            background-position: 0 0;
         }
 
         a {
@@ -25,163 +44,260 @@
             color: inherit;
         }
 
-        /* Header */
-        header {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%),
-                        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.02)" stroke-width="1"/></pattern></defs><rect width="1200" height="600" fill="%23000"/><rect width="1200" height="600" fill="url(%23grid)"/></svg>');
-            padding: 80px 20px;
-            text-align: center;
-            position: relative;
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            overflow: hidden;
+            padding: 16px 0;
         }
 
-        header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -10%;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
-            border-radius: 50%;
-            animation: float 6s ease-in-out infinite;
-        }
-
-        header::after {
-            content: '';
-            position: absolute;
-            bottom: -30%;
-            left: -5%;
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
-            border-radius: 50%;
-            animation: float 8s ease-in-out infinite reverse;
-        }
-
-        header .content {
-            position: relative;
-            z-index: 2;
-            max-width: 900px;
+        .nav-content {
+            max-width: 1400px;
             margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        header h1 {
-            font-size: 3.5rem;
+        .nav-logo {
+            font-size: 1.25rem;
             font-weight: 700;
-            margin-bottom: 20px;
-            background: linear-gradient(135deg, #fff 0%, #a1a1a6 100%);
+            background: var(--primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            letter-spacing: -1px;
         }
 
-        header p {
-            font-size: 1.1rem;
-            color: #a1a1a6;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(30px); }
-        }
-
-        /* Navigation */
-        nav {
+        .nav-links {
             display: flex;
-            justify-content: center;
-            gap: 10px;
-            background: rgba(15, 15, 18, 0.8);
-            backdrop-filter: blur(20px);
-            padding: 12px 20px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            flex-wrap: wrap;
+            gap: 40px;
         }
 
-        nav a {
-            padding: 10px 20px;
-            color: #a1a1a6;
+        .nav-links a {
+            color: var(--text-secondary);
             font-weight: 500;
-            border-radius: 6px;
-            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding-top: 140px;
+            padding-bottom: 80px;
             position: relative;
+            overflow: hidden;
         }
 
-        nav a:hover, nav a.active {
-            color: #fff;
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1000px;
+            height: 1000px;
+
+            border-radius: 50%;
+            z-index: -1;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+        }
+
+        .hero-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+            text-align: center;
+        }
+
+        .hero h1 {
+            margin-top: 60px;
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 24px;
+            letter-spacing: -0.02em;
+        }
+
+        .hero h1 .highlight {
+background: var(--primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 10px;
+            line-height: 1.6;
+            margin-bottom: 48px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 60px;
+        }
+
+        .btn {
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: 1px solid var(--primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-color: var(--text-secondary);
         }
 
-        nav a.active {
-            background: rgba(139, 92, 246, 0.1);
-            border: 1px solid rgba(139, 92, 246, 0.5);
+        /* Features Grid */
+        .features {
+            margin-top: 80px;
+            padding-bottom: 20px;
         }
 
-        /* Sections */
-        section {
-            max-width: 1200px;
-            margin: 60px auto;
-            padding: 0 20px;
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
         }
 
-        h2 {
-            font-size: 2.2rem;
+        .feature-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(59, 130, 246, 0.3);
+            transform: translateY(-4px);
+        }
+
+        .feature-card h3 {
+            font-size: 1.125rem;
             font-weight: 700;
-            margin-bottom: 10px;
-            color: #fff;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Content Section */
+        section {
+            max-width: 1400px;
+            margin: 100px auto;
+            padding: 0 24px;
+        }
+
+        section h2 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 16px;
+            color: var(--text-primary);
         }
 
         .section-subtitle {
-            color: #a1a1a6;
-            margin-bottom: 40px;
-            font-size: 1.05rem;
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            margin-bottom: 48px;
+            max-width: 600px;
         }
 
         /* PDF Viewer */
         .pdf-viewer {
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
+            border-radius: 16px;
+            padding: 40px;
             backdrop-filter: blur(10px);
+            margin-bottom: 40px;
         }
 
         .pdf-viewer h3 {
-            color: #fff;
-            font-size: 1.1rem;
-            font-weight: 600;
+            font-size: 1.5rem;
+            font-weight: 700;
             margin-bottom: 12px;
+            color: var(--text-primary);
         }
 
         .pdf-viewer p {
-            color: #a1a1a6;
-            margin-bottom: 16px;
-            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 1rem;
         }
 
         .pdf-container {
             width: 100%;
-            height: 700px;
+            height: 1000px;
             border-radius: 12px;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(0, 0, 0, 0.3);
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
         }
 
         .pdf-container:hover {
-            border-color: rgba(139, 92, 246, 0.3);
-            box-shadow: 0 20px 60px rgba(139, 92, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 20px 60px rgba(59, 130, 246, 0.1);
         }
 
         .pdf-container iframe {
@@ -195,6 +311,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 24px;
+            margin-top: 40px;
         }
 
         .article-card {
@@ -206,58 +323,60 @@
             backdrop-filter: blur(10px);
             display: flex;
             flex-direction: column;
+            group: article;
         }
 
         .article-card:hover {
-            background: rgba(139, 92, 246, 0.08);
-            border-color: rgba(139, 92, 246, 0.4);
+            background: rgba(59, 130, 246, 0.08);
+            border-color: rgba(59, 130, 246, 0.4);
             transform: translateY(-8px);
-            box-shadow: 0 12px 40px rgba(139, 92, 246, 0.1);
+            box-shadow: 0 12px 40px rgba(59, 130, 246, 0.1);
         }
 
         .article-title {
             font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: #fff;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
             line-height: 1.4;
             flex-grow: 1;
         }
 
         .article-actions {
             display: flex;
-            gap: 10px;
-            margin-top: 16px;
-        }
-
-        .btn {
-            padding: 10px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            border: 1px solid transparent;
-            text-align: center;
+            gap: 12px;
+            margin-top: 24px;
         }
 
         .btn-view {
-            background: rgba(255, 255, 255, 0.08);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.15);
             flex: 1;
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 10px 16px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
         }
 
         .btn-view:hover {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--primary);
         }
 
         .btn-download {
-            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-            color: white;
             flex: 1;
+            background: #7c3aed;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
         }
 
         .btn-download:hover {
@@ -265,111 +384,31 @@
             box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
         }
 
-        /* README Section */
-        .readme-container {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 40px;
-            backdrop-filter: blur(10px);
-        }
-
-        .readme-content {
-            color: #e4e4e7;
-            font-size: 1rem;
-            line-height: 1.8;
-        }
-
-        .readme-content h1, .readme-content h2, .readme-content h3, .readme-content h4 {
-            color: #fff;
-            margin-top: 24px;
-            margin-bottom: 12px;
-            font-weight: 600;
-        }
-
-        .readme-content h1 { font-size: 2rem; }
-        .readme-content h2 { font-size: 1.6rem; }
-        .readme-content h3 { font-size: 1.3rem; }
-        .readme-content h4 { font-size: 1.1rem; }
-
-        .readme-content p {
-            margin-bottom: 16px;
-        }
-
-        .readme-content ul, .readme-content ol {
-            margin: 16px 0 16px 24px;
-        }
-
-        .readme-content li {
-            margin-bottom: 8px;
-        }
-
-        .readme-content code {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 0.95rem;
-            color: #a1a1a6;
-        }
-
-        .readme-content pre {
-            background: rgba(0, 0, 0, 0.4);
-            padding: 16px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 16px 0;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .readme-content pre code {
-            background: none;
-            padding: 0;
-            color: #e4e4e7;
-        }
-
-        .readme-content a {
-            color: #8b5cf6;
-            font-weight: 500;
-        }
-
-        .readme-content a:hover {
-            text-decoration: underline;
-        }
-
-        .readme-content blockquote {
-            border-left: 3px solid rgba(139, 92, 246, 0.5);
-            padding-left: 16px;
-            margin: 16px 0;
-            color: #a1a1a6;
-            font-style: italic;
-        }
-
         /* Journal Section */
         .journal-container {
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
+            border-radius: 16px;
             padding: 40px;
             backdrop-filter: blur(10px);
         }
 
         .journal-content {
-            color: #e4e4e7;
+            color: var(--text-secondary);
             font-size: 1rem;
             line-height: 1.8;
         }
 
         .journal-content h1, .journal-content h2, .journal-content h3, .journal-content h4 {
-            color: #fff;
-            margin-top: 24px;
-            margin-bottom: 12px;
-            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 32px;
+            margin-bottom: 16px;
+            font-weight: 700;
         }
 
         .journal-content h1 { font-size: 2rem; }
-        .journal-content h2 { font-size: 1.6rem; }
-        .journal-content h3 { font-size: 1.3rem; }
+        .journal-content h2 { font-size: 1.5rem; }
+        .journal-content h3 { font-size: 1.25rem; }
         .journal-content h4 { font-size: 1.1rem; }
 
         .journal-content p {
@@ -385,119 +424,179 @@
         }
 
         .journal-content code {
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.4);
             padding: 2px 6px;
             border-radius: 4px;
             font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 0.95rem;
-            color: #a1a1a6;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        .journal-content pre {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 16px 0;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .journal-content pre code {
+            background: none;
+            padding: 0;
+            color: var(--text-primary);
         }
 
         .loading {
             text-align: center;
-            color: #a1a1a6;
-            padding: 40px 20px;
+            color: var(--text-secondary);
+            padding: 60px 20px;
+            font-size: 1rem;
         }
 
         .error {
-            color: #f87171;
+            color: #fca5a5;
             padding: 20px;
-            background: rgba(248, 113, 113, 0.1);
+            background: rgba(248, 113, 113, 0.08);
             border-radius: 8px;
-            border: 1px solid rgba(248, 113, 113, 0.3);
+            border: 1px solid rgba(248, 113, 113, 0.2);
         }
 
         /* Footer */
         footer {
-            text-align: center;
-            padding: 40px 20px;
-            color: #71717a;
-            font-size: 0.9rem;
             border-top: 1px solid rgba(255, 255, 255, 0.05);
-            margin-top: 60px;
+            padding: 60px 24px;
+            margin-top: 100px;
+            background: rgba(15, 17, 42, 0.5);
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-section h4 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .footer-section a {
+            display: block;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-bottom {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            header h1 {
-                font-size: 2.2rem;
+            .hero h1 {
+                font-size: 2rem;
             }
 
-            header p {
-                font-size: 1rem;
+            .nav-links {
+                gap: 24px;
+                font-size: 0.9rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .btn {
+                width: 100%;
             }
 
             .pdf-container {
                 height: 400px;
             }
 
-            nav {
-                flex-direction: row;
-                gap: 5px;
-                padding: 10px 10px;
-            }
-
-            nav a {
-                padding: 8px 12px;
-                font-size: 0.9rem;
-            }
-
             .articles-grid {
                 grid-template-columns: 1fr;
             }
 
-            h2 {
-                font-size: 1.8rem;
+            section h2 {
+                font-size: 1.75rem;
             }
 
-            section {
-                margin: 40px auto;
-            }
-
-            .readme-container, .journal-container {
+            .pdf-viewer, .journal-container {
                 padding: 24px;
             }
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="content">
-            <h1>Federated Learning Security Hub</h1>
-            <p>Comprehensive research on federated learning security, threat models, attack vectors, and defense mechanisms.</p>
-        </div>
-    </header>
-
+    <!-- Navigation -->
     <nav>
-
-        <a href="#sota">SOTA PDF</a>
-        <a href="#articles">Research Papers</a>
-        <a href="#journal">Journal</a>
+        <div class="nav-content">
+            <div class="nav-logo">FL Security Hub</div>
+            <div class="nav-links">
+                <a href="#sota">Documentation</a>
+                <a href="#articles">Papers</a>
+                <a href="#journal">Journal</a>
+            </div>
+        </div>
     </nav>
 
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Secure Federated Learning<br><span class="highlight">Research & Analysis</span></h1>
+            <p>Comprehensive research on federated learning security, threat models, attack vectors, and defense mechanisms. Explore our collection of peer-reviewed papers and the latest security insights.</p>
+            <div class="hero-buttons">
+                <a href="#sota" class="btn btn-primary">Explore SOTA</a>
+                <a href="#articles" class="btn btn-secondary">View Papers</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOTA PDF Section -->
     <section id="sota">
         <h2>State-of-the-Art Document</h2>
-        <p class="section-subtitle">Comprehensive overview of federated learning security</p>
+        <p class="section-subtitle">Comprehensive overview of federated learning security, threat models, and defense mechanisms.</p>
         <div class="pdf-viewer">
-            <h3>Federated Learning under Adversaries - SOTA</h3>
-            <p>The main State-of-the-Art document covering threat models, attack vectors, and defense mechanisms in federated learning.</p>
             <div class="pdf-container">
                 <iframe src="https://youbey.github.io/MLSecOps-Research/main.pdf" title="SOTA PDF"></iframe>
             </div>
         </div>
     </section>
 
+    <!-- Papers Section -->
     <section id="articles">
         <h2>Research Papers</h2>
-        <p class="section-subtitle">Collection of peer-reviewed papers on federated learning security</p>
+        <p class="section-subtitle">Peer-reviewed papers and studies advancing the field of federated learning security.</p>
         <div class="articles-grid" id="articlesGrid">
             <div class="loading">Loading papers...</div>
         </div>
     </section>
 
+    <!-- Journal Section -->
     <section id="journal">
         <h2>Research Journal</h2>
-        <p class="section-subtitle">Latest insights and notes on federated learning security research</p>
+        <p class="section-subtitle">Latest insights, discoveries, and detailed notes on federated learning security research.</p>
         <div class="journal-container">
             <div class="journal-content" id="journalContent">
                 <div class="loading">Loading journal...</div>
@@ -505,75 +604,73 @@
         </div>
     </section>
 
+    <!-- Footer -->
     <footer>
-        <p>Federated Learning Security Hub | MLSecOps Research</p>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <a href="#sota">SOTA Document</a>
+                <a href="#articles">Research Papers</a>
+                <a href="#journal">Journal</a>
+            </div>
+            <div class="footer-section">
+                <h4>Topics</h4>
+                <a href="#">Federated Learning</a>
+                <a href="#">Security</a>
+                <a href="#">Privacy</a>
+            </div>
+            <div class="footer-section">
+                <h4>Learn More</h4>
+                <a href="#">GitHub</a>
+                <a href="#">Documentation</a>
+                <a href="#">Contact</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Federated Learning Security Hub. All rights reserved.</p>
+        </div>
     </footer>
 
     <script>
-        // List of research papers
         const papers = [
             { title: "A Survey on Federated Learning", file: "../Articles/A Survey on Federated Learning.pdf" },
             { title: "Adoption of Federated Learning for Healthcare Informatics", file: "../Articles/Adoption_of_Federated_Learning_for_Healthcare_Informatics_Emerging_Applications_and_Future_Directions.pdf" },
             { title: "Advances and Open Problems in Federated Learning", file: "../Articles/Advances and Open Problems in Federated Learning.pdf" },
-            { title: "Backdoor Attacks and Defenses in Federated Learning - Survey", file: "../Articles/Backdoor Attacks and Defenses in Federated Learning_ Survey, Challenges and Future Research Directions by T.D. Nguyen.pdf" },
+            { title: "Backdoor Attacks and Defenses in Federated Learning", file: "../Articles/Backdoor Attacks and Defenses in Federated Learning_ Survey, Challenges and Future Research Directions by T.D. Nguyen.pdf" },
             { title: "Delving into the Adversarial Robustness of Federated Learning", file: "../Articles/Delving into the Adversarial Robustness of Federated Learning.pdf" },
             { title: "FL Definition", file: "../Articles/FL DEFINITION.pdf" },
             { title: "Federated Learning Challenges, Methods, and Future Directions", file: "../Articles/Federated Learning Challenges, Methods, and Future Directions.pdf" },
-            { title: "How To Backdoor Federated Learning - Bagdasaryan et al. (2020)", file: "../Articles/How To Backdoor Federated Learning — Bagdasaryan et al. (2020).pdf" },
-            { title: "Byzantine-Tolerant Gradient Descent (NIPS 2017)", file: "../Articles/NIPS-2017-machine-learning-with-adversaries-byzantine-tolerant-gradient-descent-Paper.pdf" },
-            { title: "Deep Leakage from Gradients (NeurIPS 2019)", file: "../Articles/NeurIPS-2019-deep-leakage-from-gradients-Paper.pdf" },
+            { title: "How To Backdoor Federated Learning", file: "../Articles/How To Backdoor Federated Learning — Bagdasaryan et al. (2020).pdf" },
+            { title: "Byzantine-Tolerant Gradient Descent", file: "../Articles/NIPS-2017-machine-learning-with-adversaries-byzantine-tolerant-gradient-descent-Paper.pdf" },
+            { title: "Deep Leakage from Gradients", file: "../Articles/NeurIPS-2019-deep-leakage-from-gradients-Paper.pdf" },
             { title: "Taxonomy of Attacks in Federated Learning", file: "../Articles/Taxonomy_of_Attacks_in_Federated_Learning__Adapted_from_Liu_et_al___2023_.pdf" },
             { title: "Threats - Lingjuan Lyu", file: "../Articles/Threats_Lingjuan_Lyu.pdf" },
-            { title: "Poisoning Attacks and Privacy-Preserving Approaches - RAID 2020", file: "../Articles/raid20-fung.pdf" }
+            { title: "Poisoning Attacks and Privacy-Preserving Approaches", file: "../Articles/raid20-fung.pdf" }
         ];
 
-        // Load and render articles
         function loadArticles() {
             const grid = document.getElementById('articlesGrid');
             grid.innerHTML = papers.map(paper => `
                 <div class="article-card">
                     <div class="article-title">${paper.title}</div>
                     <div class="article-actions">
-                        <a href="${paper.file}" target="_blank" class="btn btn-view">View</a>
-                        <a href="${paper.file}" download class="btn btn-download">Download</a>
+                        <a href="${paper.file}" target="_blank" class="btn-view">View</a>
+                        <a href="${paper.file}" download class="btn-download">Download</a>
                     </div>
                 </div>
             `).join('');
         }
 
-        // Load README
-        async function loadReadme() {
-            const content = document.getElementById('readmeContent');
-            try {
-                const response = await window.fs.readFile('ReadME.md', { encoding: 'utf8' });
-                content.innerHTML = markdownToHtml(response);
-            } catch (error) {
-                content.innerHTML = `
-                    <div class="error">
-                        <strong>README not found</strong><br>
-                        Could not load ReadME.md from the project root.
-                    </div>
-                `;
-            }
-        }
-
-        // Load Journal
         async function loadJournal() {
             const content = document.getElementById('journalContent');
             try {
                 const response = await window.fs.readFile('../journal.md', { encoding: 'utf8' });
                 content.innerHTML = markdownToHtml(response);
             } catch (error) {
-                content.innerHTML = `
-                    <div class="error">
-                        <strong>Journal not found</strong><br>
-                        Could not load journal.md.
-                    </div>
-                `;
+                content.innerHTML = `<div class="error"><strong>Journal not found</strong><br>Could not load journal.md</div>`;
             }
         }
 
-        // Markdown to HTML converter
         function markdownToHtml(markdown) {
             let html = markdown
                 .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
@@ -586,11 +683,9 @@
                 .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
                 .replace(/`([^`]+)`/g, '<code>$1</code>')
                 .split('\n')
-                .map((line, i, arr) => {
+                .map(line => {
                     if (line.match(/^#{1,4} /)) return line;
                     if (line.match(/^- /)) return line.replace(/^- /, '<li>') + '</li>';
-                    if (line.match(/^\d+\. /)) return '<li>' + line + '</li>';
-                    if (line.match(/^> /)) return '<blockquote>' + line.replace(/^> /, '') + '</blockquote>';
                     if (line.trim() === '') return '';
                     if (!line.match(/^<[a-z]/)) return '<p>' + line + '</p>';
                     return line;
@@ -599,34 +694,10 @@
                 .replace(/(<li>.*?<\/li>)/s, '<ul>$1</ul>')
                 .replace(/<\/li>\s*<\/ul>\s*<ul>\s*<li>/g, '</li><li>')
                 .replace(/<p><\/p>/g, '');
-
             return html;
         }
 
-        // Active nav highlighting on scroll
-        const navLinks = document.querySelectorAll('nav a');
-        const sections = document.querySelectorAll('section');
-
-        window.addEventListener('scroll', () => {
-            let current = '';
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop - 100;
-                if (window.pageYOffset >= sectionTop) {
-                    current = section.getAttribute('id');
-                }
-            });
-
-            navLinks.forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('href') === '#' + current) {
-                    link.classList.add('active');
-                }
-            });
-        });
-
-        // Initialize on load
         loadArticles();
-        loadReadme();
         loadJournal();
     </script>
 </body>
