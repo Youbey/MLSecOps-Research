@@ -24,7 +24,6 @@ jobs:
           root_file: docs/SOTA/main.tex
           compiler: pdflatex
           args: "-interaction=nonstopmode -file-line-error -shell-escape"
-          latexmk_shell_escape: true
           extra_system_packages: "gnupg wget"
 
       - name: Commit PDF
