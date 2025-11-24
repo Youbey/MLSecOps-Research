@@ -1,35 +1,69 @@
-name: Build and Commit LaTeX PDF
+name: Build and publish LaTeX PDF
 
 on:
   push:
+    branches:
+      - master
+    paths:
+      - "docs/SOTA/**"
+  pull_request:
+    branches:
+      - master
     paths:
       - "docs/SOTA/**"
 
 permissions:
-  contents: write 
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    name: Build LaTeX PDF
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Compile LaTeX with Bibliography
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Compile LaTeX
         uses: xu-cheng/latex-action@v3
         with:
           root_file: docs/SOTA/main.tex
-          compiler: pdflatex
-          args: "-interaction=nonstopmode -file-line-error -shell-escape"
-          extra_system_packages: "gnupg wget"
+          work_in_root_file_dir: true
+          latexmk_shell_escape: true
 
-      - name: Commit PDF
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git add docs/SOTA/main.pdf
-          git commit -m "Auto-build PDF from main.tex" || echo "No changes to commit"
-          git push
+      - name: Generate build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: latex-pdf
+          path: docs/SOTA/main.pdf
+
+  deploy:
+    name: Deploy to GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Download PDF artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: latex-pdf
+          path: ./  # This puts main.pdf in the root of the site
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
