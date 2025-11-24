@@ -5,6 +5,9 @@ on:
     paths:
       - "docs/report.tex"
 
+permissions:
+  contents: write 
+  
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          persist-credentials: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install LaTeX
         uses: xu-cheng/latex-action@v3
@@ -27,6 +30,3 @@ jobs:
           git add docs/report.pdf
           git commit -m "Auto-build PDF from report.tex" || echo "No changes to commit"
           git push
-        env:
-          # Needed to push back to the repo
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
