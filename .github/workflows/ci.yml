@@ -3,11 +3,11 @@ name: Build and Commit LaTeX PDF
 on:
   push:
     paths:
-      - "docs/report.tex"
+      - "docs/SOTA/**"
 
 permissions:
   contents: write 
-  
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,8 +17,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install LaTeX
+      - name: Build PDF
         uses: xu-cheng/latex-action@v3
         with:
           root_file: docs/SOTA/main.tex
@@ -27,6 +26,6 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add docs/SOTA/report.pdf
-          git commit -m "Auto-build PDF from report.tex" || echo "No changes to commit"
+          git add docs/SOTA/main.pdf
+          git commit -m "Auto-build PDF from main.tex" || echo "No changes to commit"
           git push
