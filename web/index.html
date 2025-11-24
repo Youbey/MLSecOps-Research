@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Federated Learning Security Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0f12 0%, #1a1a22 100%);
+            color: #e4e4e7;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%),
+                        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.02)" stroke-width="1"/></pattern></defs><rect width="1200" height="600" fill="%23000"/><rect width="1200" height="600" fill="url(%23grid)"/></svg>');
+            padding: 80px 20px;
+            text-align: center;
+            position: relative;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -5%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: float 8s ease-in-out infinite reverse;
+        }
+
+        header .content {
+            position: relative;
+            z-index: 2;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff 0%, #a1a1a6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            color: #a1a1a6;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(30px); }
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            background: rgba(15, 15, 18, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            padding: 10px 20px;
+            color: #a1a1a6;
+            font-weight: 500;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        nav a:hover, nav a.active {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        nav a.active {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.5);
+        }
+
+        /* Sections */
+        section {
+            max-width: 1200px;
+            margin: 60px auto;
+            padding: 0 20px;
+        }
+
+        h2 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .section-subtitle {
+            color: #a1a1a6;
+            margin-bottom: 40px;
+            font-size: 1.05rem;
+        }
+
+        /* PDF Viewer */
+        .pdf-viewer {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .pdf-viewer h3 {
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .pdf-viewer p {
+            color: #a1a1a6;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+        }
+
+        .pdf-container {
+            width: 100%;
+            height: 700px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.02);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .pdf-container:hover {
+            border-color: rgba(139, 92, 246, 0.3);
+            box-shadow: 0 20px 60px rgba(139, 92, 246, 0.1);
+        }
+
+        .pdf-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Articles Grid */
+        .articles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .article-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 28px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .article-card:hover {
+            background: rgba(139, 92, 246, 0.08);
+            border-color: rgba(139, 92, 246, 0.4);
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(139, 92, 246, 0.1);
+        }
+
+        .article-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #fff;
+            line-height: 1.4;
+            flex-grow: 1;
+        }
+
+        .article-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            text-align: center;
+        }
+
+        .btn-view {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            flex: 1;
+        }
+
+        .btn-view:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+        }
+
+        /* README Section */
+        .readme-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+        }
+
+        .readme-content {
+            color: #e4e4e7;
+            font-size: 1rem;
+            line-height: 1.8;
+        }
+
+        .readme-content h1, .readme-content h2, .readme-content h3, .readme-content h4 {
+            color: #fff;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .readme-content h1 { font-size: 2rem; }
+        .readme-content h2 { font-size: 1.6rem; }
+        .readme-content h3 { font-size: 1.3rem; }
+        .readme-content h4 { font-size: 1.1rem; }
+
+        .readme-content p {
+            margin-bottom: 16px;
+        }
+
+        .readme-content ul, .readme-content ol {
+            margin: 16px 0 16px 24px;
+        }
+
+        .readme-content li {
+            margin-bottom: 8px;
+        }
+
+        .readme-content code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+            color: #a1a1a6;
+        }
+
+        .readme-content pre {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 16px 0;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .readme-content pre code {
+            background: none;
+            padding: 0;
+            color: #e4e4e7;
+        }
+
+        .readme-content a {
+            color: #8b5cf6;
+            font-weight: 500;
+        }
+
+        .readme-content a:hover {
+            text-decoration: underline;
+        }
+
+        .readme-content blockquote {
+            border-left: 3px solid rgba(139, 92, 246, 0.5);
+            padding-left: 16px;
+            margin: 16px 0;
+            color: #a1a1a6;
+            font-style: italic;
+        }
+
+        /* Journal Section */
+        .journal-container {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+        }
+
+        .journal-content {
+            color: #e4e4e7;
+            font-size: 1rem;
+            line-height: 1.8;
+        }
+
+        .journal-content h1, .journal-content h2, .journal-content h3, .journal-content h4 {
+            color: #fff;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .journal-content h1 { font-size: 2rem; }
+        .journal-content h2 { font-size: 1.6rem; }
+        .journal-content h3 { font-size: 1.3rem; }
+        .journal-content h4 { font-size: 1.1rem; }
+
+        .journal-content p {
+            margin-bottom: 16px;
+        }
+
+        .journal-content ul, .journal-content ol {
+            margin: 16px 0 16px 24px;
+        }
+
+        .journal-content li {
+            margin-bottom: 8px;
+        }
+
+        .journal-content code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+            color: #a1a1a6;
+        }
+
+        .loading {
+            text-align: center;
+            color: #a1a1a6;
+            padding: 40px 20px;
+        }
+
+        .error {
+            color: #f87171;
+            padding: 20px;
+            background: rgba(248, 113, 113, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(248, 113, 113, 0.3);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #71717a;
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: 60px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2.2rem;
+            }
+
+            header p {
+                font-size: 1rem;
+            }
+
+            .pdf-container {
+                height: 400px;
+            }
+
+            nav {
+                flex-direction: row;
+                gap: 5px;
+                padding: 10px 10px;
+            }
+
+            nav a {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+
+            .articles-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h2 {
+                font-size: 1.8rem;
+            }
+
+            section {
+                margin: 40px auto;
+            }
+
+            .readme-container, .journal-container {
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="content">
+            <h1>Federated Learning Security Hub</h1>
+            <p>Comprehensive research on federated learning security, threat models, attack vectors, and defense mechanisms.</p>
+        </div>
+    </header>
+
+    <nav>
+
+        <a href="#sota">SOTA PDF</a>
+        <a href="#articles">Research Papers</a>
+        <a href="#journal">Journal</a>
+    </nav>
+
+    <section id="sota">
+        <h2>State-of-the-Art Document</h2>
+        <p class="section-subtitle">Comprehensive overview of federated learning security</p>
+        <div class="pdf-viewer">
+            <h3>Federated Learning under Adversaries - SOTA</h3>
+            <p>The main State-of-the-Art document covering threat models, attack vectors, and defense mechanisms in federated learning.</p>
+            <div class="pdf-container">
+                <iframe src="https://youbey.github.io/MLSecOps-Research/main.pdf" title="SOTA PDF"></iframe>
+            </div>
+        </div>
+    </section>
+
+    <section id="articles">
+        <h2>Research Papers</h2>
+        <p class="section-subtitle">Collection of peer-reviewed papers on federated learning security</p>
+        <div class="articles-grid" id="articlesGrid">
+            <div class="loading">Loading papers...</div>
+        </div>
+    </section>
+
+    <section id="journal">
+        <h2>Research Journal</h2>
+        <p class="section-subtitle">Latest insights and notes on federated learning security research</p>
+        <div class="journal-container">
+            <div class="journal-content" id="journalContent">
+                <div class="loading">Loading journal...</div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>Federated Learning Security Hub | MLSecOps Research</p>
+    </footer>
+
+    <script>
+        // List of research papers
+        const papers = [
+            { title: "A Survey on Federated Learning", file: "../Articles/A Survey on Federated Learning.pdf" },
+            { title: "Adoption of Federated Learning for Healthcare Informatics", file: "../Articles/Adoption_of_Federated_Learning_for_Healthcare_Informatics_Emerging_Applications_and_Future_Directions.pdf" },
+            { title: "Advances and Open Problems in Federated Learning", file: "../Articles/Advances and Open Problems in Federated Learning.pdf" },
+            { title: "Backdoor Attacks and Defenses in Federated Learning - Survey", file: "../Articles/Backdoor Attacks and Defenses in Federated Learning_ Survey, Challenges and Future Research Directions by T.D. Nguyen.pdf" },
+            { title: "Delving into the Adversarial Robustness of Federated Learning", file: "../Articles/Delving into the Adversarial Robustness of Federated Learning.pdf" },
+            { title: "FL Definition", file: "../Articles/FL DEFINITION.pdf" },
+            { title: "Federated Learning Challenges, Methods, and Future Directions", file: "../Articles/Federated Learning Challenges, Methods, and Future Directions.pdf" },
+            { title: "How To Backdoor Federated Learning - Bagdasaryan et al. (2020)", file: "../Articles/How To Backdoor Federated Learning — Bagdasaryan et al. (2020).pdf" },
+            { title: "Byzantine-Tolerant Gradient Descent (NIPS 2017)", file: "../Articles/NIPS-2017-machine-learning-with-adversaries-byzantine-tolerant-gradient-descent-Paper.pdf" },
+            { title: "Deep Leakage from Gradients (NeurIPS 2019)", file: "../Articles/NeurIPS-2019-deep-leakage-from-gradients-Paper.pdf" },
+            { title: "Taxonomy of Attacks in Federated Learning", file: "../Articles/Taxonomy_of_Attacks_in_Federated_Learning__Adapted_from_Liu_et_al___2023_.pdf" },
+            { title: "Threats - Lingjuan Lyu", file: "../Articles/Threats_Lingjuan_Lyu.pdf" },
+            { title: "Poisoning Attacks and Privacy-Preserving Approaches - RAID 2020", file: "../Articles/raid20-fung.pdf" }
+        ];
+
+        // Load and render articles
+        function loadArticles() {
+            const grid = document.getElementById('articlesGrid');
+            grid.innerHTML = papers.map(paper => `
+                <div class="article-card">
+                    <div class="article-title">${paper.title}</div>
+                    <div class="article-actions">
+                        <a href="${paper.file}" target="_blank" class="btn btn-view">View</a>
+                        <a href="${paper.file}" download class="btn btn-download">Download</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load README
+        async function loadReadme() {
+            const content = document.getElementById('readmeContent');
+            try {
+                const response = await window.fs.readFile('ReadME.md', { encoding: 'utf8' });
+                content.innerHTML = markdownToHtml(response);
+            } catch (error) {
+                content.innerHTML = `
+                    <div class="error">
+                        <strong>README not found</strong><br>
+                        Could not load ReadME.md from the project root.
+                    </div>
+                `;
+            }
+        }
+
+        // Load Journal
+        async function loadJournal() {
+            const content = document.getElementById('journalContent');
+            try {
+                const response = await window.fs.readFile('../journal.md', { encoding: 'utf8' });
+                content.innerHTML = markdownToHtml(response);
+            } catch (error) {
+                content.innerHTML = `
+                    <div class="error">
+                        <strong>Journal not found</strong><br>
+                        Could not load journal.md.
+                    </div>
+                `;
+            }
+        }
+
+        // Markdown to HTML converter
+        function markdownToHtml(markdown) {
+            let html = markdown
+                .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
+                .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
+                .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/__(.*?)__/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/_(.+?)_/g, '<em>$1</em>')
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .split('\n')
+                .map((line, i, arr) => {
+                    if (line.match(/^#{1,4} /)) return line;
+                    if (line.match(/^- /)) return line.replace(/^- /, '<li>') + '</li>';
+                    if (line.match(/^\d+\. /)) return '<li>' + line + '</li>';
+                    if (line.match(/^> /)) return '<blockquote>' + line.replace(/^> /, '') + '</blockquote>';
+                    if (line.trim() === '') return '';
+                    if (!line.match(/^<[a-z]/)) return '<p>' + line + '</p>';
+                    return line;
+                })
+                .join('\n')
+                .replace(/(<li>.*?<\/li>)/s, '<ul>$1</ul>')
+                .replace(/<\/li>\s*<\/ul>\s*<ul>\s*<li>/g, '</li><li>')
+                .replace(/<p><\/p>/g, '');
+
+            return html;
+        }
+
+        // Active nav highlighting on scroll
+        const navLinks = document.querySelectorAll('nav a');
+        const sections = document.querySelectorAll('section');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 100;
+                if (window.pageYOffset >= sectionTop) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Initialize on load
+        loadArticles();
+        loadReadme();
+        loadJournal();
+    </script>
+</body>
+</html>
