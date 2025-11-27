@@ -1,0 +1,66 @@
+@startuml
+!theme plain
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+
+package "Client Node (x N)" {
+    ' FIX 1: Added brackets [] to define the component before aliasing
+    [Local Data] as Data
+    
+    node "Execution Sandbox" {
+        ' FIX 2: Added component definitions for Trainer and CSA
+        [Model Trainer] as Trainer
+        [Client Security Agent] as CSA
+        
+        note bottom of CSA
+            <b>Security Functions:</b>
+            - LDP (Clip + Noise)
+            - Signature Verification
+            - Payload Signing
+        end note
+    }
+    
+    interface "mTLS Socket" as ClientNet
+}
+
+package "Aggregation Server" {
+    interface "mTLS Listener" as ServerNet
+    
+    package "Security Layer" {
+        [Connection Manager] as ConnMan
+        ' FIX 3: Added component definition for ASM
+        [Anomaly Security Module] as ASM
+        
+        note right of ASM
+            <b>Modules:</b>
+            - Norm Inspector
+            - Similarity Analyzer
+            - Robust Strategy (Krum/FLTrust)
+            - Reputation Manager
+        end note
+    }
+    
+    package "Core ML Logic" {
+        [Global Aggregator] as Aggregator
+        [Model Auditor] as Auditor
+    }
+    
+    database "Model Registry & Logs" as DB
+    database "PKI / CA" as PKI
+}
+
+' Relationships
+Data --> Trainer : Read Only
+Trainer -> CSA : Raw Gradients
+CSA -> ClientNet : Encrypted Signed Update
+ClientNet <..> ServerNet : TLS 1.3 Tunnel
+
+ServerNet -> ConnMan : Auth Handshake
+ConnMan ..> PKI : Validate Cert
+ConnMan -> ASM : Verified Payload
+ASM -> Aggregator : Filtered Gradients
+Aggregator -> Auditor : Candidate Global Model
+Auditor -> DB : Persist Valid Model
+Auditor -> ServerNet : Broadcast New Model
+
+ @enduml

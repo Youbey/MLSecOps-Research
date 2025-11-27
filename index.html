@@ -356,6 +356,40 @@
             border: none;
         }
 
+        /* Image Viewer */
+        .image-viewer {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 40px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .image-container {
+            width: 100%;
+            height: auto; /* Changed from fixed height to auto for images */
+            max-height: 1000px; /* Optional: set a max-height */
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .image-container:hover {
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 20px 60px rgba(59, 130, 246, 0.1);
+        }
+
+        .image-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
         /* Articles Grid */
         .articles-grid {
             display: grid;
@@ -705,6 +739,11 @@
         <div class="journal-container">
             <div class="journal-content">
                 <h3>Meta-model Overview</h3>
+                <div class="image-viewer">
+                    <div class="image-container">
+                        <img src="docs/Meta_Model/meta_model.svg" alt="Meta-model Diagram">
+                    </div>
+                </div>
                 <p>This section will detail the meta-model developed for understanding and analyzing security aspects in federated learning. It will include diagrams, descriptions of components, and their interrelationships.</p>
                 <p>Further content, including interactive diagrams or detailed specifications, will be added here.</p>
             </div>
