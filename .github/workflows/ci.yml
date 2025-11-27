@@ -60,6 +60,7 @@ jobs:
           cp pdf-build/main.pdf _site/
           cp -r Articles _site/ 2>/dev/null || true
           cp -r web _site/ 2>/dev/null || true
+          cp journal.md _site/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

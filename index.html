@@ -641,8 +641,9 @@
             </div>
             <div class="nav-links">
                 <a href="#sota"><i class="fas fa-file-alt"></i> Documentation</a>
-                <a href="#articles"><i class="fas fa-book"></i> Papers</a>
+                <a href="#meta-model"><i class="fas fa-project-diagram"></i> Meta-model</a>
                 <a href="#journal"><i class="fas fa-newspaper"></i> Journal</a>
+                <a href="#contributors"><i class="fas fa-users"></i> Contributors</a>
             </div>
         </div>
     </nav>
@@ -697,6 +698,19 @@
         </div>
     </section>
 
+    <!-- Meta-model Section -->
+    <section id="meta-model">
+        <h2><i class="fas fa-project-diagram"></i> Our Meta-model</h2>
+        <p class="section-subtitle">Explore the meta-model guiding our simulation about federated learning security.</p>
+        <div class="journal-container">
+            <div class="journal-content">
+                <h3>Meta-model Overview</h3>
+                <p>This section will detail the meta-model developed for understanding and analyzing security aspects in federated learning. It will include diagrams, descriptions of components, and their interrelationships.</p>
+                <p>Further content, including interactive diagrams or detailed specifications, will be added here.</p>
+            </div>
+        </div>
+    </section>
+
     <!-- Journal Section -->
     <section id="journal">
         <h2><i class="fas fa-newspaper"></i> Research Journal</h2>
@@ -704,6 +718,38 @@
         <div class="journal-container">
             <div class="journal-content" id="journalContent">
                 <div class="loading">Loading journal...</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contributors Section -->
+    <section id="contributors">
+        <h2><i class="fas fa-users"></i> Our Contributors</h2>
+        <p class="section-subtitle">Meet the dedicated researchers and developers behind the Federated Learning Security Hub.</p>
+        <div class="articles-grid"> <!-- Reusing articles-grid for a similar layout -->
+            <div class="article-card">
+                <div class="article-title">Youbey</div>
+                <div class="article-actions">
+                    <a href="https://www.linkedin.com/in/youbey/" target="_blank" class="btn-view"><i class="fab fa-linkedin"></i> LinkedIn</a>
+                </div>
+            </div>
+            <div class="article-card">
+                <div class="article-title">Yvesei</div>
+                <div class="article-actions">
+                    <a href="https://www.linkedin.com/in/nazihouchta" target="_blank" class="btn-view"><i class="fab fa-linkedin"></i> LinkedIn</a>
+                </div>
+            </div>
+            <div class="article-card">
+                <div class="article-title">Salim Ghoudane</div>
+                <div class="article-actions">
+                    <a href="https://www.linkedin.com/in/contributor3/" target="_blank" class="btn-view"><i class="fab fa-linkedin"></i> LinkedIn</a>
+                </div>
+            </div>
+            <div class="article-card">
+                <div class="article-title">Aya Fsahi</div>
+                <div class="article-actions">
+                    <a href="https://www.linkedin.com/in/contributor4/" target="_blank" class="btn-view"><i class="fab fa-linkedin"></i> LinkedIn</a>
+                </div>
             </div>
         </div>
     </section>
@@ -737,19 +783,19 @@
 
     <script>
         const papers = [
-            { title: "A Survey on Federated Learning", file: "../Articles/A Survey on Federated Learning.pdf" },
-            { title: "Adoption of Federated Learning for Healthcare Informatics", file: "../Articles/Adoption_of_Federated_Learning_for_Healthcare_Informatics_Emerging_Applications_and_Future_Directions.pdf" },
-            { title: "Advances and Open Problems in Federated Learning", file: "../Articles/Advances and Open Problems in Federated Learning.pdf" },
-            { title: "Backdoor Attacks and Defenses in Federated Learning", file: "../Articles/Backdoor Attacks and Defenses in Federated Learning_ Survey, Challenges and Future Research Directions by T.D. Nguyen.pdf" },
-            { title: "Delving into the Adversarial Robustness of Federated Learning", file: "../Articles/Delving into the Adversarial Robustness of Federated Learning.pdf" },
-            { title: "FL Definition", file: "../Articles/FL DEFINITION.pdf" },
-            { title: "Federated Learning Challenges, Methods, and Future Directions", file: "../Articles/Federated Learning Challenges, Methods, and Future Directions.pdf" },
-            { title: "How To Backdoor Federated Learning", file: "../Articles/How To Backdoor Federated Learning — Bagdasaryan et al. (2020).pdf" },
-            { title: "Byzantine-Tolerant Gradient Descent", file: "../Articles/NIPS-2017-machine-learning-with-adversaries-byzantine-tolerant-gradient-descent-Paper.pdf" },
-            { title: "Deep Leakage from Gradients", file: "../Articles/NeurIPS-2019-deep-leakage-from-gradients-Paper.pdf" },
-            { title: "Taxonomy of Attacks in Federated Learning", file: "../Articles/Taxonomy_of_Attacks_in_Federated_Learning__Adapted_from_Liu_et_al___2023_.pdf" },
-            { title: "Threats - Lingjuan Lyu", file: "../Articles/Threats_Lingjuan_Lyu.pdf" },
-            { title: "Poisoning Attacks and Privacy-Preserving Approaches", file: "../Articles/raid20-fung.pdf" }
+            { title: "A Survey on Federated Learning", file: "Articles/A Survey on Federated Learning.pdf" },
+            { title: "Adoption of Federated Learning for Healthcare Informatics", file: "Articles/Adoption_of_Federated_Learning_for_Healthcare_Informatics_Emerging_Applications_and_Future_Directions.pdf" },
+            { title: "Advances and Open Problems in Federated Learning", file: "Articles/Advances and Open Problems in Federated Learning.pdf" },
+            { title: "Backdoor Attacks and Defenses in Federated Learning", file: "Articles/Backdoor Attacks and Defenses in Federated Learning_ Survey, Challenges and Future Research Directions by T.D. Nguyen.pdf" },
+            { title: "Delving into the Adversarial Robustness of Federated Learning", file: "Articles/Delving into the Adversarial Robustness of Federated Learning.pdf" },
+            { title: "FL Definition", file: "Articles/FL DEFINITION.pdf" },
+            { title: "Federated Learning Challenges, Methods, and Future Directions", file: "Articles/Federated Learning Challenges, Methods, and Future Directions.pdf" },
+            { title: "How To Backdoor Federated Learning", file: "Articles/How To Backdoor Federated Learning — Bagdasaryan et al. (2020).pdf" },
+            { title: "Byzantine-Tolerant Gradient Descent", file: "Articles/NIPS-2017-machine-learning-with-adversaries-byzantine-tolerant-gradient-descent-Paper.pdf" },
+            { title: "Deep Leakage from Gradients", file: "Articles/NeurIPS-2019-deep-leakage-from-gradients-Paper.pdf" },
+            { title: "Taxonomy of Attacks in Federated Learning", file: "Articles/Taxonomy_of_Attacks_in_Federated_Learning__Adapted_from_Liu_et_al___2023_.pdf" },
+            { title: "Threats - Lingjuan Lyu", file: "Articles/Threats_Lingjuan_Lyu.pdf" },
+            { title: "Poisoning Attacks and Privacy-Preserving Approaches", file: "Articles/raid20-fung.pdf" }
         ];
 
         function loadArticles() {
@@ -768,7 +814,7 @@
         async function loadJournal() {
             const content = document.getElementById('journalContent');
             try {
-                const response = await fetch('../journal.md');
+                const response = await fetch('journal.md');
                 content.innerHTML = markdownToHtml(journalContent);
             } catch (error) {
                 content.innerHTML = `<div class="error"><strong>Journal not found</strong><br>Could not load journal.md</div>`;

@@ -9,4 +9,4 @@ Federated Learning (FL) enables the collaborative training of machine learning m
 - BENDRAOU Ayoub
 - OUCHTA Nazih
 - GHOUDANE Salim
-- FASHI Aya
+- FSAHI Aya
