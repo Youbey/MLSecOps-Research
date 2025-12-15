@@ -1,0 +1,11 @@
+---
+- name: Test creating a folder
+  hosts: server
+  gather_facts: false
+
+  tasks:
+    - name: Create test directory
+      file:
+        path: /root/test
+        state: directory
+        mode: '0755'
