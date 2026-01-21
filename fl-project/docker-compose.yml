@@ -11,15 +11,21 @@ services:
       - FLASK_ENV=production
     ports:
       - "5000:5000"
-      - "9090:9090"
     volumes:
       - ./server.py:/app/server.py
       - server_state:/app/state
     command: python server.py
     networks:
       - fl_network
+    labels:
+      - "job=fl_server"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://127.0.0.1:5000/health')"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -43,6 +49,14 @@ services:
         condition: service_healthy
     networks:
       - fl_network
+    labels:
+      - "job=fl_client"
+      - "client_id=client_1"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
     command: python client.py
 
   # FL Client 2
@@ -64,9 +78,17 @@ services:
         condition: service_healthy
     networks:
       - fl_network
+    labels:
+      - "job=fl_client"
+      - "client_id=client_2"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
     command: python client.py
 
-  # Prometheus for monitoring
+  # Prometheus for metrics
   prometheus:
     image: prom/prometheus:latest
     container_name: fl_prometheus
@@ -80,12 +102,54 @@ services:
       - '--storage.tsdb.path=/prometheus'
     networks:
       - fl_network
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+
+  # Loki for logs
+  loki:
+    image: grafana/loki:latest
+    container_name: fl_loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - fl_network
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: fl_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - fl_network
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
 
 volumes:
   server_state:
   client_1_cache:
   client_2_cache:
   prometheus_data:
+  loki_data:
+  grafana_data:
 
 networks:
   fl_network:
