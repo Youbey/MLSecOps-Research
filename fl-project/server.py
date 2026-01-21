@@ -40,19 +40,28 @@ class FLServer:
         return model
     
     def aggregate_updates(self, updates, num_clients):
-        """Federated averaging"""
+        """Federated averaging - handle variable shaped layers"""
         aggregated_weights = None
+        num_updates = len(updates)
         
         for client_id, weights in updates.items():
-            weights = np.array(weights)
+            # weights is a list of arrays (one per layer)
             if aggregated_weights is None:
-                aggregated_weights = weights.copy()
+                # Initialize with first client's weights
+                aggregated_weights = [np.array(w, dtype=np.float32) for w in weights]
             else:
-                aggregated_weights += weights
+                # Add each layer from this client
+                for i, w in enumerate(weights):
+                    w_array = np.array(w, dtype=np.float32)
+                    aggregated_weights[i] = aggregated_weights[i] + w_array
         
-        aggregated_weights /= len(updates)
-        logger.info(f"Aggregated {len(updates)} client updates")
-        return aggregated_weights.tolist()
+        # Average across all clients
+        aggregated_weights = [w / num_updates for w in aggregated_weights]
+        
+        # Convert back to lists
+        aggregated_weights = [w.tolist() for w in aggregated_weights]
+        logger.info(f"Aggregated {num_updates} client updates ({len(aggregated_weights)} layers)")
+        return aggregated_weights
     
     def get_model_weights(self):
         return [w.tolist() for w in self.global_model.get_weights()]
@@ -148,48 +157,54 @@ def submit_update():
 @app.route('/trigger_round', methods=['POST'])
 def trigger_round():
     """Trigger federated learning round"""
-    if len(server.client_updates) == 0:
-        return jsonify({'error': 'No client updates available'}), 400
-    
-    logger.info(f"Starting federated round {server.round + 1}")
-    
-    # Aggregate weights
-    aggregated = server.aggregate_updates(
-        {cid: update['weights'] for cid, update in server.client_updates.items()},
-        num_clients=len(server.client_updates)
-    )
-    
-    # Update global model
-    server.set_model_weights(aggregated)
-    
-    # Record history
-    history_entry = {
-        'round': server.round,
-        'num_clients': len(server.client_updates),
-        'timestamp': datetime.now().isoformat(),
-        'client_metrics': {cid: update['metrics'] 
-                          for cid, update in server.client_updates.items()}
-    }
-    server.training_history.append(history_entry)
-    
-    server.round += 1
-    server.client_updates = {}
-    
-    # Save state
-    server.save_state()
-    training_round.inc()
-    
-    logger.info(f"Round {server.round - 1} completed and saved")
-    return jsonify({
-        'status': 'aggregated',
-        'round': server.round - 1,
-        'clients_aggregated': len(history_entry['num_clients'])
-    })
+    try:
+        if len(server.client_updates) == 0:
+            return jsonify({'error': 'No client updates available'}), 400
+        
+        logger.info(f"Starting federated round {server.round + 1}")
+        
+        # Aggregate weights
+        aggregated = server.aggregate_updates(
+            {cid: update['weights'] for cid, update in server.client_updates.items()},
+            num_clients=len(server.client_updates)
+        )
+        
+        # Update global model
+        server.set_model_weights(aggregated)
+        
+        # Record history
+        num_clients_aggregated = len(server.client_updates)
+        history_entry = {
+            'round': server.round,
+            'num_clients': num_clients_aggregated,
+            'timestamp': datetime.now().isoformat(),
+            'client_metrics': {cid: update['metrics'] 
+                              for cid, update in server.client_updates.items()}
+        }
+        server.training_history.append(history_entry)
+        
+        server.round += 1
+        server.client_updates = {}
+        
+        # Save state
+        server.save_state()
+        training_round.inc()
+        
+        logger.info(f"Round {server.round - 1} completed and saved")
+        return jsonify({
+            'status': 'aggregated',
+            'round': server.round - 1,
+            'clients_aggregated': num_clients_aggregated
+        })
+    except Exception as e:
+        logger.error(f"Error in trigger_round: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/metrics', methods=['GET'])
 def metrics():
     """Prometheus metrics endpoint"""
-    return generate_latest()
+    from prometheus_client import REGISTRY
+    return generate_latest(REGISTRY), 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 @app.route('/status', methods=['GET'])
 def status():
