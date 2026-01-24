@@ -80,6 +80,7 @@ pipeline {
             steps {
                 echo '========== Building Docker Images =========='
                 sh '''
+                    cd fl-project
                     docker-compose build
                     docker images | grep -E "fl-project|python"
                     echo "Docker build completed"
