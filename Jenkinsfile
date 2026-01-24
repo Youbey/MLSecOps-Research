@@ -77,6 +77,7 @@ pipeline {
                 echo '========== STAGE: Docker Build =========='
                 sh '''
                     echo "Building Docker images once (no rebuilds per attack)"
+                    cd fl-project
                     docker-compose build
                     docker images | grep -E "fl-project|python"
                     echo " Docker images built"
