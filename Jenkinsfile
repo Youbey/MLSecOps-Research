@@ -89,6 +89,7 @@ pipeline {
             steps {
                 echo '========== STAGE: Deploy =========='
                 sh '''
+                    cd fl-project
                     # Stop any existing containers
                     docker-compose down -v || true
                     
