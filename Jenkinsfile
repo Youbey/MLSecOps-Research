@@ -2,20 +2,52 @@ pipeline {
     agent any
     
     options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 1, unit: 'HOURS')
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        timeout(time: 2, unit: 'HOURS')
         timestamps()
     }
-    
+
     parameters {
-        string(name: 'FL_ROUNDS', defaultValue: '5', description: 'Number of FL training rounds')
-        string(name: 'FL_WAIT', defaultValue: '15', description: 'Wait time between rounds (seconds)')
-        booleanParam(name: 'RUN_SECURITY_AUDIT', defaultValue: true, description: 'Run security audit')
-        booleanParam(name: 'DEPLOY_PROD', defaultValue: false, description: 'Deploy to production')
+        choice(
+            name: 'ATTACK_MODE',
+            choices: [
+                'NONE',
+                'POISONING',
+                'STEALTHY',
+                'SYBIL_SIMULATION',
+                'GRADIENT_INVERSION',
+                'ALL_SEQUENTIAL'  // Run all attacks one after another
+            ],
+            description: 'Attack scenario to test'
+        )
+        
+        string(
+            name: 'FL_ROUNDS',
+            defaultValue: '5',
+            description: 'Number of FL training rounds'
+        )
+        
+        string(
+            name: 'FL_WAIT',
+            defaultValue: '15',
+            description: 'Wait time between rounds (seconds)'
+        )
+        
+        booleanParam(
+            name: 'RUN_SECURITY_AUDIT',
+            defaultValue: true,
+            description: 'Run security audits after training'
+        )
+        
+        booleanParam(
+            name: 'GENERATE_REPORT',
+            defaultValue: true,
+            description: 'Generate security report'
+        )
     }
     
     stages {
-        stage('Checkout') {
+        stage(' Checkout') {
             steps {
                 echo '========== STAGE: Checkout =========='
                 checkout scm
@@ -23,329 +55,346 @@ pipeline {
             }
         }
         
-        stage('Code Quality & Security Scan') {
-            parallel {
-                stage('Bandit Security Scan') {
-                    steps {
-                        echo '========== Running Bandit =========='
-                        sh '''
-                            pip install bandit -q
-                            bandit -r . -f json -o bandit-report.json || true
-                            echo "Bandit scan completed"
-                        '''
-                    }
-                }
-                
-                stage('Semgrep Pattern Matching') {
-                    steps {
-                        echo '========== Running Semgrep =========='
-                        sh '''
-                            pip install semgrep -q
-                            semgrep --config=p/security-audit . --json -o semgrep-report.json || true
-                            echo "Semgrep scan completed"
-                        '''
-                    }
-                }
-                
-                stage('Python Linting') {
-                    steps {
-                        echo '========== Running Pylint =========='
-                        sh '''
-                            pip install pylint -q
-                            pylint server.py client.py control.py --exit-zero -f parseable > pylint-report.txt || true
-                            echo "Pylint completed"
-                        '''
-                    }
-                }
-                
-                stage('Dependency Check') {
-                    steps {
-                        echo '========== Checking Dependencies =========='
-                        sh '''
-                            pip install safety -q
-                            safety check --json > safety-report.json || true
-                            echo "Dependency check completed"
-                        '''
-                    }
-                }
+        stage(' Code Quality') {
+            steps {
+                echo '========== STAGE: Code Quality =========='
+                sh '''
+                    pip install bandit semgrep pylint -q
+                    bandit -r . -f json -o bandit-report.json || true
+                    semgrep --config=p/security-audit . --json -o semgrep-report.json || true
+                    echo " Code quality checks completed"
+                '''
             }
             post {
                 always {
-                    archiveArtifacts artifacts: '*-report.*', allowEmptyArchive: true
+                    archiveArtifacts artifacts: '*-report.json', allowEmptyArchive: true
                 }
             }
         }
         
-        stage('Build Docker Images') {
+        stage(' Build (Single Time)') {
             steps {
-                echo '========== Building Docker Images =========='
+                echo '========== STAGE: Docker Build =========='
                 sh '''
-                    cd fl-project
+                    echo "Building Docker images once (no rebuilds per attack)"
                     docker-compose build
                     docker images | grep -E "fl-project|python"
-                    echo "Docker build completed"
+                    echo " Docker images built"
                 '''
             }
         }
         
-        stage('Unit Tests') {
+        stage(' Deploy & Setup') {
             steps {
-                echo '========== Running Unit Tests =========='
+                echo '========== STAGE: Deploy =========='
                 sh '''
-                    pip install pytest pytest-cov -q
-                    python -m pytest tests/ -v --cov=. --cov-report=html || true
-                    echo "Unit tests completed"
-                '''
-            }
-            post {
-                always {
-                    publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'htmlcov',
-                        reportFiles: 'index.html',
-                        reportName: 'Code Coverage'
-                    ])
-                }
-            }
-        }
-        
-        stage('Deploy to Staging') {
-            steps {
-                echo '========== Deploying to Staging =========='
-                sh '''
+                    # Stop any existing containers
                     docker-compose down -v || true
+                    
+                    # Start fresh
                     docker-compose up -d
                     echo "Waiting for services to start..."
                     sleep 60
                     
                     # Verify services
                     curl -f http://localhost:5000/health || exit 1
-                    echo "Services deployed successfully"
+                    echo " Services deployed successfully"
                 '''
             }
         }
         
-        stage('Generate Training Data') {
+        stage(' Generate Training Data') {
             steps {
-                echo '========== Generating Training Data =========='
+                echo '========== STAGE: Data Generation =========='
                 sh '''
                     python generate_data.py
                     ls -lah data/
-                    echo "Training data generated"
+                    echo " Training data generated"
                 '''
             }
         }
         
-        stage('Run FL Training') {
-            steps {
-                echo "========== Running ${params.FL_ROUNDS} FL Training Rounds =========="
-                sh '''
-                    python control.py --mode train \
-                        --rounds ${FL_ROUNDS} \
-                        --wait ${FL_WAIT}
-                    
-                    echo "FL training completed"
-                '''
-            }
-        }
+        // =====================================================
+        // DYNAMIC: Run selected attack scenario(s)
+        // =====================================================
         
-        stage('Collect Metrics') {
+        stage(' Run Attack Scenarios') {
             steps {
-                echo '========== Collecting Metrics =========='
-                sh '''
-                    echo "Getting FL Status..."
-                    python control.py --mode status > fl-status.json
+                echo "========== STAGE: Attack Scenarios =========="
+                script {
+                    // Define all attack modes
+                    def attacks = [
+                        'POISONING',
+                        'STEALTHY',
+                        'SYBIL_SIMULATION',
+                        'GRADIENT_INVERSION'
+                    ]
                     
-                    echo "Exporting Prometheus Metrics..."
-                    curl -s http://localhost:5000/metrics > prometheus-metrics.txt
-                    
-                    echo "Getting Loki Logs..."
-                    curl -s 'http://localhost:3100/loki/api/v1/query_range?query={job=~"fl_.*"}&limit=1000' \
-                        | jq . > loki-logs.json || true
-                    
-                    echo "Metrics collected"
-                '''
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: '*-metrics.txt, fl-status.json, loki-logs.json', 
-                                    allowEmptyArchive: true
+                    if (params.ATTACK_MODE == 'ALL_SEQUENTIAL') {
+                        // Run all attacks sequentially
+                        echo " Running ALL attack scenarios sequentially"
+                        attacks.each { attack ->
+                            runAttackScenario(attack)
+                        }
+                        // Also run baseline (no attack)
+                        runAttackScenario('NONE')
+                    } else {
+                        // Run single selected attack
+                        echo " Running single attack scenario: ${params.ATTACK_MODE}"
+                        runAttackScenario(params.ATTACK_MODE)
+                    }
                 }
             }
         }
         
-        stage('Security Audit') {
+        stage(' Security Analysis') {
             when {
                 expression { params.RUN_SECURITY_AUDIT == true }
             }
             steps {
-                echo '========== Running Security Audit =========='
+                echo '========== STAGE: Security Analysis =========='
                 sh '''
-                    mkdir -p audit_reports
+                    mkdir -p security_analysis_reports
                     
-                    # Detect poisoning attacks
-                    python audit/detect_poisoning.py > audit_reports/poisoning-report.txt 2>&1 || true
-                    
-                    # Verify gradient integrity
-                    python audit/verify_gradients.py > audit_reports/gradient-report.txt 2>&1 || true
-                    
-                    # Model fingerprinting
-                    python audit/model_fingerprint.py > audit_reports/fingerprint-report.txt 2>&1 || true
-                    
-                    # Generate security summary
-                    echo "=== SECURITY AUDIT SUMMARY ===" > audit_reports/security-summary.txt
-                    cat audit_reports/*-report.txt >> audit_reports/security-summary.txt || true
-                    
-                    echo "Security audit completed"
+                    # Analyze audit trails
+                    python << 'PYTHON_SCRIPT'
+import json
+import os
+from pathlib import Path
+
+audit_dir = 'security_audits'
+report = {
+    'total_rounds': 0,
+    'attacks_detected': 0,
+    'attacks_rejected': 0,
+    'client_stats': {},
+    'detection_results': []
+}
+
+for audit_file in sorted(Path(audit_dir).glob('*.json')):
+    with open(audit_file) as f:
+        audit = json.load(f)
+    
+    report['total_rounds'] += 1
+    
+    # Count rejections
+    if audit.get('rejected_updates'):
+        report['attacks_rejected'] += len(audit['rejected_updates'])
+        
+        # Extract attack types
+        for update_id, rejection in audit['rejected_updates'].items():
+            analysis = rejection.get('security_analysis', {})
+            for attack in analysis.get('detected_attacks', []):
+                report['detection_results'].append({
+                    'round': audit['round'],
+                    'attack_type': attack.get('type'),
+                    'confidence': attack.get('confidence'),
+                    'evidence': attack.get('evidence')
+                })
+    
+    # Track client stats
+    for client_id, state in audit.get('client_states', {}).items():
+        if client_id not in report['client_stats']:
+            report['client_stats'][client_id] = {
+                'updates_accepted': 0,
+                'updates_rejected': 0
+            }
+        report['client_stats'][client_id]['updates_accepted'] += state.get('updates_accepted', 0)
+        report['client_stats'][client_id]['updates_rejected'] += state.get('updates_rejected', 0)
+
+# Save analysis
+with open('security_analysis_reports/analysis.json', 'w') as f:
+    json.dump(report, f, indent=2)
+
+print(" Security analysis completed")
+print(f"  Rounds analyzed: {report['total_rounds']}")
+print(f"  Attacks detected: {len(report['detection_results'])}")
+print(f"  Attacks rejected: {report['attacks_rejected']}")
+PYTHON_SCRIPT
                 '''
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'audit_reports/**', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'security_analysis_reports/**'
                 }
             }
         }
         
-        stage('Generate Report') {
+        stage(' Generate Report') {
+            when {
+                expression { params.GENERATE_REPORT == true }
+            }
             steps {
-                echo '========== Generating Comprehensive Report =========='
+                echo '========== STAGE: Report Generation =========='
                 sh '''
                     python << 'PYTHON_SCRIPT'
 import json
 from datetime import datetime
 
-report = {
-    "timestamp": datetime.now().isoformat(),
-    "pipeline_name": "MLSecOps FL Pipeline",
-    "build_number": "${BUILD_NUMBER}",
-    "status": "SUCCESS",
-    "stages": {
-        "code_quality": "Passed",
-        "build": "Passed",
-        "tests": "Passed",
-        "deployment": "Passed",
-        "training": "Passed",
-        "security_audit": "Passed"
-    }
-}
+# Read analysis
+with open('security_analysis_reports/analysis.json') as f:
+    analysis = json.load(f)
 
-with open("pipeline-report.json", "w") as f:
-    json.dump(report, f, indent=2)
-
-print("Report generated")
-PYTHON_SCRIPT
-                    
-                    # Create HTML report
-                    cat > fl-pipeline-report.html << 'HTML'
+# Generate HTML report
+html = f"""
 <!DOCTYPE html>
 <html>
 <head>
-    <title>MLSecOps FL Pipeline Report</title>
+    <title>FL Security Test Report - Attack Scenario: {params.ATTACK_MODE}</title>
     <style>
-        body { font-family: Arial; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        .header { background: #4ecdc4; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        .stage { background: #f9f9f9; border-left: 4px solid #4ecdc4; padding: 15px; margin: 10px 0; }
-        .success { border-left-color: #51cf66; }
-        .warning { border-left-color: #ffd93d; }
-        .error { border-left-color: #ff6b6b; }
-        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background: #4ecdc4; color: white; }
-        .metric { display: inline-block; background: #e8f5e9; padding: 10px 15px; margin: 5px; border-radius: 5px; }
+        body {{ font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }}
+        .container {{ max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }}
+        .header {{ background: #4ecdc4; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }}
+        .stats {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 20px 0; }}
+        .stat-box {{ background: #f9f9f9; border-left: 4px solid #4ecdc4; padding: 15px; }}
+        .stat-value {{ font-size: 24px; font-weight: bold; color: #4ecdc4; }}
+        .detection {{ background: white; border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }}
+        .high-confidence {{ border-left: 4px solid #51cf66; }}
+        .medium-confidence {{ border-left: 4px solid #ffd93d; }}
+        .low-confidence {{ border-left: 4px solid #ff6b6b; }}
+        table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+        th, td {{ border: 1px solid #ddd; padding: 12px; text-align: left; }}
+        th {{ background: #4ecdc4; color: white; }}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🤖 MLSecOps FL Pipeline Report</h1>
-            <p>Build #${BUILD_NUMBER} | ${BUILD_TIMESTAMP}</p>
+            <h1> FL Security Test Report</h1>
+            <p>Attack Scenario: <strong>{params.ATTACK_MODE}</strong></p>
+            <p>Generated: {datetime.now().isoformat()}</p>
         </div>
         
-        <h2>Pipeline Stages</h2>
-        <div class="stage success">
-            <strong>Code Quality & Security</strong> - Passed
-        </div>
-        <div class="stage success">
-            <strong>Build Docker Images</strong> - Passed
-        </div>
-        <div class="stage success">
-            <strong>Unit Tests</strong> - Passed
-        </div>
-        <div class="stage success">
-            <strong>Deploy to Staging</strong> - Passed
-        </div>
-        <div class="stage success">
-            <strong>FL Training</strong> - Completed (${FL_ROUNDS} rounds)
-        </div>
-        <div class="stage success">
-            <strong>Security Audit</strong> - Passed
+        <h2>Summary</h2>
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-value">{analysis['total_rounds']}</div>
+                <p>Training Rounds</p>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">{len(analysis['detection_results'])}</div>
+                <p>Attacks Detected</p>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">{analysis['attacks_rejected']}</div>
+                <p>Attacks Rejected</p>
+            </div>
         </div>
         
-        <h2>Metrics</h2>
-        <div>
-            <span class="metric">Training Rounds: ${FL_ROUNDS}</span>
-            <span class="metric">Clients: 2</span>
-            <span class="metric">Status: Healthy</span>
+        <h2>Client Statistics</h2>
+        <table>
+            <tr>
+                <th>Client ID</th>
+                <th>Accepted Updates</th>
+                <th>Rejected Updates</th>
+                <th>Status</th>
+            </tr>
+"""
+
+for client_id, stats in analysis['client_stats'].items():
+    status = " BENIGN" if stats['updates_rejected'] == 0 else " MALICIOUS"
+    html += f"""
+            <tr>
+                <td>{client_id}</td>
+                <td>{stats['updates_accepted']}</td>
+                <td>{stats['updates_rejected']}</td>
+                <td>{status}</td>
+            </tr>
+"""
+
+html += """
+        </table>
+        
+        <h2>Attack Detection Results</h2>
+"""
+
+if analysis['detection_results']:
+    for detection in analysis['detection_results']:
+        confidence = detection['confidence']
+        conf_class = 'high-confidence' if confidence > 0.8 else ('medium-confidence' if confidence > 0.6 else 'low-confidence')
+        html += f"""
+        <div class="detection {conf_class}">
+            <strong>Round {detection['round']}: {detection['attack_type']}</strong><br>
+            Confidence: {confidence:.1%}<br>
+            Evidence: {detection['evidence']}
         </div>
-        
-        <h2>Artifacts</h2>
-        <ul>
-            <li>Bandit Security Report</li>
-            <li>Semgrep Analysis</li>
-            <li>Code Coverage Report</li>
-            <li>FL Training Metrics</li>
-            <li>Security Audit Report</li>
-        </ul>
-        
+"""
+else:
+    html += "<p>No attacks detected.</p>"
+
+html += """
         <footer style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; color: #666;">
-            <p>MLSecOps Pipeline | Federated Learning Security Research</p>
+            <p>MLSecOps FL Security Testing Pipeline</p>
         </footer>
     </div>
 </body>
 </html>
-HTML
+"""
+
+with open('security_analysis_reports/report.html', 'w') as f:
+    f.write(html)
+
+print(" HTML report generated")
+PYTHON_SCRIPT
                 '''
             }
             post {
                 always {
-                    archiveArtifacts artifacts: '*-report.*', allowEmptyArchive: true
                     publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: '.',
-                        reportFiles: 'fl-pipeline-report.html',
-                        reportName: 'Pipeline Report'
+                        reportDir: 'security_analysis_reports',
+                        reportFiles: 'report.html',
+                        reportName: "Security Report - ${params.ATTACK_MODE}"
                     ])
                 }
             }
         }
         
-        stage('Approval Gate') {
-            when {
-                expression { params.DEPLOY_PROD == true }
-            }
+        stage(' Performance Metrics') {
             steps {
-                echo '========== Waiting for Approval =========='
-                input message: 'Deploy to Production?', 
-                       ok: 'Deploy',
-                       submitter: 'admin'
+                echo '========== STAGE: Metrics Collection =========='
+                sh '''
+                    mkdir -p performance_reports
+                    
+                    # Collect Prometheus metrics
+                    curl -s http://localhost:5000/metrics > performance_reports/prometheus-metrics.txt || true
+                    
+                    # Collect server status
+                    curl -s http://localhost:5000/status | jq . > performance_reports/server-status.json || true
+                    
+                    # Collect security status
+                    curl -s http://localhost:5000/security/status | jq . > performance_reports/security-status.json || true
+                    
+                    echo " Metrics collected"
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'performance_reports/**'
+                }
             }
         }
         
-        stage('Deploy to Production') {
+        stage(' Approval Gate (Optional)') {
             when {
-                expression { params.DEPLOY_PROD == true }
+                expression { params.ATTACK_MODE == 'ALL_SEQUENTIAL' }
             }
             steps {
-                echo '========== Deploying to Production =========='
+                echo '========== STAGE: Review Results =========='
+                input message: 'Review results. Deploy to production?', ok: 'Deploy'
+            }
+        }
+        
+        stage(' Cleanup') {
+            steps {
+                echo '========== STAGE: Cleanup =========='
                 sh '''
-                    echo "Deployment to production approved"
-                    echo "In production: docker-compose up -d on prod server"
-                    echo "Production deployment completed"
+                    # Keep containers running for inspection
+                    # Uncomment below to stop:
+                    # docker-compose down
+                    
+                    echo " System ready for inspection"
+                    echo "   Server: http://localhost:5000"
+                    echo "   Security Status: curl http://localhost:5000/security/status"
                 '''
             }
         }
@@ -353,17 +402,63 @@ HTML
     
     post {
         always {
-            echo '========== Cleanup =========='
-            sh 'docker-compose logs > docker-compose.log || true'
-            archiveArtifacts artifacts: 'docker-compose.log', allowEmptyArchive: true
+            echo '========== Build Complete =========='
+            archiveArtifacts artifacts: 'security_audits/**, security_analysis_reports/**, performance_reports/**', allowEmptyArchive: true
+            
+            // Cleanup
+            sh '''
+                # Save Docker logs
+                docker-compose logs > docker-compose.log || true
+                docker-compose logs fl_server > server.log || true
+                docker-compose logs fl_malicious_client > malicious-client.log || true
+            '''
+            
+            archiveArtifacts artifacts: '*.log', allowEmptyArchive: true
         }
+        
         success {
-            echo 'Pipeline completed successfully!'
-            sh 'echo "Build successful at $(date)" > build-success.txt'
+            echo ' Pipeline completed successfully!'
         }
+        
         failure {
-            echo 'Pipeline failed!'
-            sh 'echo "Build failed at $(date)" > build-failure.txt'
+            echo ' Pipeline failed!'
         }
     }
+}
+
+// =====================================================
+// HELPER FUNCTION: Run single attack scenario
+// =====================================================
+def runAttackScenario(String attackMode) {
+    echo "\n${'='*70}"
+    echo "Running Attack Scenario: $attackMode"
+    echo "${'='*70}\n"
+    
+    sh '''
+        set -e
+        
+        # Update docker-compose with attack mode
+        sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" docker-compose.yml
+        
+        # Restart malicious client with new attack mode
+        docker-compose up -d --no-deps --build malicious_client 2>/dev/null || true
+        
+        # Wait for malicious client to reconnect
+        sleep 5
+        
+        # Run training rounds
+        echo "Starting training with attack mode: ''' + attackMode + '''"
+        python control.py --mode train \\
+            --rounds ${FL_ROUNDS} \\
+            --wait ${FL_WAIT}
+        
+        # Save audit files with attack mode prefix
+        if [ -d "security_audits" ]; then
+            for file in security_audits/round_*.json; do
+                [ -f "$file" ] && mv "$file" "$file.''' + attackMode + '''"
+            done
+        fi
+        
+        echo " Attack scenario ''' + attackMode + ''' completed"
+    '''
 }
