@@ -75,44 +75,49 @@ pipeline {
         stage(' Build (Single Time)') {
             steps {
                 echo '========== STAGE: Docker Build =========='
-                sh '''
-                    echo "Building Docker images once (no rebuilds per attack)"
-                    cd fl-project
-                    docker-compose build
-                    docker images | grep -E "fl-project|python"
-                    echo " Docker images built"
-                '''
+                dir('fl-project') {
+                    sh '''
+                        echo "Building Docker images once (no rebuilds per attack)"
+                        docker-compose build
+                        docker images | grep -E "fl-project|python"
+                        echo " Docker images built"
+                    '''
+                }
             }
         }
         
         stage(' Deploy & Setup') {
             steps {
                 echo '========== STAGE: Deploy =========='
-                sh '''
-                    cd fl-project
-                    # Stop any existing containers
-                    docker-compose down -v || true
-                    
-                    # Start fresh
-                    docker-compose up -d
-                    echo "Waiting for services to start..."
-                    sleep 60
-                    
-                    # Verify services
-                    curl -f http://localhost:5000/health || exit 1
-                    echo " Services deployed successfully"
-                '''
+                dir('fl-project') {
+                    sh '''
+                        cd fl-project
+                        # Stop any existing containers
+                        docker-compose down -v || true
+                        
+                        # Start fresh
+                        docker-compose up -d
+                        echo "Waiting for services to start..."
+                        sleep 60
+                        
+                        # Verify services
+                        curl -f http://localhost:5000/health || exit 1
+                        echo " Services deployed successfully"
+                    '''
+                }
             }
         }
         
         stage(' Generate Training Data') {
             steps {
                 echo '========== STAGE: Data Generation =========='
-                sh '''
-                    python generate_data.py
-                    ls -lah data/
-                    echo " Training data generated"
-                '''
+                dir('fl-project') {
+                    sh '''
+                        python generate_data.py
+                        ls -lah data/
+                        echo " Training data generated"
+                    '''
+                }
             }
         }
         
@@ -155,11 +160,12 @@ pipeline {
             }
             steps {
                 echo '========== STAGE: Security Analysis =========='
-                sh '''
-                    mkdir -p security_analysis_reports
-                    
-                    # Analyze audit trails
-                    python << 'PYTHON_SCRIPT'
+                dir('fl-project') {
+                    sh '''
+                        mkdir -p security_analysis_reports
+                        
+                        # Analyze audit trails
+                        python << 'PYTHON_SCRIPT'
 import json
 import os
 from pathlib import Path
@@ -214,6 +220,7 @@ print(f"  Attacks detected: {len(report['detection_results'])}")
 print(f"  Attacks rejected: {report['attacks_rejected']}")
 PYTHON_SCRIPT
                 '''
+                }
             }
             post {
                 always {
@@ -228,6 +235,7 @@ PYTHON_SCRIPT
             }
             steps {
                 echo '========== STAGE: Report Generation =========='
+                dir('fl-project') {
                 sh '''
                     python << 'PYTHON_SCRIPT'
 import json
@@ -340,6 +348,7 @@ print(" HTML report generated")
 PYTHON_SCRIPT
                 '''
             }
+            }
             post {
                 always {
                     publishHTML([
@@ -354,7 +363,8 @@ PYTHON_SCRIPT
         stage(' Performance Metrics') {
             steps {
                 echo '========== STAGE: Metrics Collection =========='
-                sh '''
+                dir('fl-project') {
+                    sh '''
                     mkdir -p performance_reports
                     
                     # Collect Prometheus metrics
@@ -367,7 +377,8 @@ PYTHON_SCRIPT
                     curl -s http://localhost:5000/security/status | jq . > performance_reports/security-status.json || true
                     
                     echo " Metrics collected"
-                '''
+                    '''
+                }   
             }
             post {
                 always {
@@ -436,31 +447,33 @@ def runAttackScenario(String attackMode) {
     echo "Running Attack Scenario: $attackMode"
     echo "${'='*70}\n"
     
-    sh '''
-        set -e
-        
-        # Update docker-compose with attack mode
-        sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" docker-compose.yml
-        
-        # Restart malicious client with new attack mode
-        docker-compose up -d --no-deps --build malicious_client 2>/dev/null || true
-        
-        # Wait for malicious client to reconnect
-        sleep 5
-        
-        # Run training rounds
-        echo "Starting training with attack mode: ''' + attackMode + '''"
-        python control.py --mode train \\
-            --rounds ${FL_ROUNDS} \\
-            --wait ${FL_WAIT}
-        
-        # Save audit files with attack mode prefix
-        if [ -d "security_audits" ]; then
-            for file in security_audits/round_*.json; do
-                [ -f "$file" ] && mv "$file" "$file.''' + attackMode + '''"
-            done
-        fi
-        
-        echo " Attack scenario ''' + attackMode + ''' completed"
-    '''
+    dir('fl-project') {
+        sh '''
+            set -e
+            
+            # Update docker-compose with attack mode
+            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" docker-compose.yml
+            
+            # Restart malicious client with new attack mode
+            docker-compose up -d --no-deps --build malicious_client 2>/dev/null || true
+            
+            # Wait for malicious client to reconnect
+            sleep 5
+            
+            # Run training rounds
+            echo "Starting training with attack mode: ''' + attackMode + '''"
+            python control.py --mode train \\
+                --rounds ${FL_ROUNDS} \\
+                --wait ${FL_WAIT}
+            
+            # Save audit files with attack mode prefix
+            if [ -d "security_audits" ]; then
+                for file in security_audits/round_*.json; do
+                    [ -f "$file" ] && mv "$file" "$file.''' + attackMode + '''"
+                done
+            fi
+            
+            echo " Attack scenario ''' + attackMode + ''' completed"
+        '''
+    }
 }
