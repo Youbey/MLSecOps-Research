@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # FL Server
+  # FL Server with Security Monitoring
   server:
     build:
       context: .
@@ -13,7 +13,9 @@ services:
       - "5000:5000"
     volumes:
       - ./server.py:/app/server.py
+      - ./audit:/app/audit
       - server_state:/app/state
+      - ./security_audits:/app/security_audits
     command: python server.py
     networks:
       - fl_network
@@ -30,7 +32,7 @@ services:
       timeout: 3s
       retries: 5
 
-  # FL Client 1
+  # Honest FL Client 1
   client_1:
     build:
       context: .
@@ -52,6 +54,7 @@ services:
     labels:
       - "job=fl_client"
       - "client_id=client_1"
+      - "type=honest"
     logging:
       driver: loki
       options:
@@ -59,20 +62,22 @@ services:
         loki-batch-size: "400"
     command: python client.py
 
-  # FL Client 2
-  client_2:
+  # MALICIOUS FL Client (Attacker)
+  malicious_client:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: fl_client_2
+    container_name: fl_malicious_client
     environment:
-      - CLIENT_ID=client_2
+      # Change ATTACK_MODE to: POISONING, STEALTHY, SYBIL_SIMULATION, GRADIENT_INVERSION, NONE
+      - ATTACK_MODE=POISONING
+      - CLIENT_ID=malicious_client
       - SERVER_URL=http://server:5000
-      - DATA_FILE=/data/client_2_data.json
+      - DATA_FILE=/data/malicious_client_data.json
     volumes:
-      - ./client.py:/app/client.py
+      - ./malicious_client.py:/app/malicious_client.py
       - ./data:/data
-      - client_2_cache:/app/cache
+      - malicious_cache:/app/cache
     depends_on:
       server:
         condition: service_healthy
@@ -80,20 +85,21 @@ services:
       - fl_network
     labels:
       - "job=fl_client"
-      - "client_id=client_2"
+      - "client_id=malicious_client"
+      - "type=malicious"
     logging:
       driver: loki
       options:
         loki-url: "http://localhost:3100/loki/api/v1/push"
         loki-batch-size: "400"
-    command: python client.py
+    command: python malicious_client.py
 
-  # Prometheus for metrics
+  # Prometheus for Metrics
   prometheus:
     image: prom/prometheus:latest
     container_name: fl_prometheus
     ports:
-      - "9090:9090"
+      - "9091:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
@@ -106,8 +112,9 @@ services:
       driver: loki
       options:
         loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
 
-  # Loki for logs
+  # Loki for Logs (Centralized Logging)
   loki:
     image: grafana/loki:latest
     container_name: fl_loki
@@ -120,7 +127,7 @@ services:
     networks:
       - fl_network
 
-  # Grafana for dashboards
+  # Grafana for Dashboards
   grafana:
     image: grafana/grafana:latest
     container_name: fl_grafana
@@ -142,11 +149,12 @@ services:
       driver: loki
       options:
         loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
 
 volumes:
   server_state:
   client_1_cache:
-  client_2_cache:
+  malicious_cache:
   prometheus_data:
   loki_data:
   grafana_data:

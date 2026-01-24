@@ -24,10 +24,10 @@ class FLController:
         try:
             response = requests.get(f'{self.server_url}/health', timeout=2)
             data = response.json()
-            print(f"✓ Server is healthy (round {data['round']})")
+            print(f" Server is healthy (round {data['round']})")
             return True
         except:
-            print("✗ Server is not responding")
+            print(" Server is not responding")
             return False
     
     def get_status(self):
@@ -73,14 +73,14 @@ class FLController:
             data = response.json()
             
             if 'error' in data:
-                print(f"✗ Round failed: {data['error']}")
+                print(f" Round failed: {data['error']}")
                 return False
             
-            print(f"\n✓ Aggregation round {data['round']} completed")
+            print(f"\n Aggregation round {data['round']} completed")
             print(f"  - Clients aggregated: {data['clients_aggregated']}")
             return True
         except Exception as e:
-            print(f"✗ Error triggering round: {e}")
+            print(f" Error triggering round: {e}")
             return False
     
     def get_metrics(self):
@@ -131,7 +131,7 @@ class FLController:
             
             time.sleep(2)
         
-        print(f"\n✓ Training completed {num_rounds} rounds")
+        print(f"\n Training completed {num_rounds} rounds")
         self.get_status()
 
 def main():
