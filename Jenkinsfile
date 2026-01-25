@@ -419,13 +419,14 @@ PYTHON_SCRIPT
             archiveArtifacts artifacts: 'security_audits/**, security_analysis_reports/**, performance_reports/**', allowEmptyArchive: true
             
             // Cleanup
-            sh '''
-                # Save Docker logs
-                docker-compose logs > docker-compose.log || true
-                docker-compose logs fl_server > server.log || true
-                docker-compose logs fl_malicious_client > malicious-client.log || true
-            '''
-            
+            dir('fl-project') {
+                sh '''
+                    # Save Docker logs
+                    docker-compose logs > docker-compose.log || true
+                    docker-compose logs fl_server > server.log || true
+                    docker-compose logs fl_malicious_client > malicious-client.log || true
+                '''
+            }
             archiveArtifacts artifacts: '*.log', allowEmptyArchive: true
         }
         
