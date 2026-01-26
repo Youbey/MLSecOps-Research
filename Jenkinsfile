@@ -443,35 +443,25 @@ PYTHON_SCRIPT
 // HELPER FUNCTION: Run single attack scenario
 // =====================================================
 def runAttackScenario(String attackMode) {
-    echo "\n${'='*70}"
     echo "Running Attack Scenario: $attackMode"
-    echo "${'='*70}\n"
     
     dir('fl-project') {
         sh '''
             set -e
             
-            # Update docker compose with attack mode
-            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" docker-compose.yml
+            # Update attack mode in docker-compose.yml
+            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/\" docker-compose.yml
             
-            # Restart malicious client with new attack mode
-            docker compose up -d --no-deps --build malicious_client 2>/dev/null || true
+            # Restart the malicious client to apply the new mode
+            docker compose up -d --no-deps --build malicious_client
             
-            # Wait for malicious client to reconnect
+            # Wait for client to check in
             sleep 5
             
-            # Run training rounds
-            echo "Starting training with attack mode: ''' + attackMode + '''"
-            python control.py --mode train \\
+            # FIXED: Run control.py INSIDE the server container
+            docker exec fl_server python control.py --mode train \\
                 --rounds ${FL_ROUNDS} \\
                 --wait ${FL_WAIT}
-            
-            # Save audit files with attack mode prefix
-            if [ -d "security_audits" ]; then
-                for file in security_audits/round_*.json; do
-                    [ -f "$file" ] && mv "$file" "$file.''' + attackMode + '''"
-                done
-            fi
             
             echo " Attack scenario ''' + attackMode + ''' completed"
         '''
