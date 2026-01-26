@@ -452,7 +452,7 @@ def runAttackScenario(String attackMode) {
             set -e
             
             # Update docker compose with attack mode
-            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" docker compose.yml
+            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" docker-compose.yml
             
             # Restart malicious client with new attack mode
             docker compose up -d --no-deps --build malicious_client 2>/dev/null || true
