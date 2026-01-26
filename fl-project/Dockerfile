@@ -1,5 +1,5 @@
 # Use Python 3.10 slim image
-FROM python:3.10-slim
+FROM --platform=linux/arm64 python:3.10-slim
 
 WORKDIR /app
 
