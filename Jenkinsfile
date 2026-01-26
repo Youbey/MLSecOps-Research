@@ -78,7 +78,7 @@ pipeline {
                 dir('fl-project') {
                     sh '''
                         echo "Building Docker images once (no rebuilds per attack)"
-                        docker-compose build
+                        docker compose build
                         docker images | grep -E "fl-project|python"
                         echo " Docker images built"
                     '''
@@ -92,10 +92,10 @@ pipeline {
                 dir('fl-project') {
                     sh '''
                         # Stop any existing containers
-                        docker-compose down -v || true
+                        docker compose down -v || true
                         
                         # Start fresh
-                        docker-compose up -d
+                        docker compose up -d
                         echo "Waiting for services to start..."
                         sleep 60
                         
@@ -402,7 +402,7 @@ PYTHON_SCRIPT
                 sh '''
                     # Keep containers running for inspection
                     # Uncomment below to stop:
-                    # docker-compose down
+                    # docker compose down
                     
                     echo " System ready for inspection"
                     echo "   Server: http://localhost:5000"
@@ -421,9 +421,9 @@ PYTHON_SCRIPT
             dir('fl-project') {
                 sh '''
                     # Save Docker logs
-                    docker-compose logs > docker-compose.log || true
-                    docker-compose logs fl_server > server.log || true
-                    docker-compose logs fl_malicious_client > malicious-client.log || true
+                    docker compose logs > docker compose.log || true
+                    docker compose logs fl_server > server.log || true
+                    docker compose logs fl_malicious_client > malicious-client.log || true
                 '''
             }
             archiveArtifacts artifacts: '*.log', allowEmptyArchive: true
@@ -451,11 +451,11 @@ def runAttackScenario(String attackMode) {
         sh '''
             set -e
             
-            # Update docker-compose with attack mode
-            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" docker-compose.yml
+            # Update docker compose with attack mode
+            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" docker compose.yml
             
             # Restart malicious client with new attack mode
-            docker-compose up -d --no-deps --build malicious_client 2>/dev/null || true
+            docker compose up -d --no-deps --build malicious_client 2>/dev/null || true
             
             # Wait for malicious client to reconnect
             sleep 5
