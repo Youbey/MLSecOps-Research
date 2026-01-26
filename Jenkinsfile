@@ -106,20 +106,20 @@ pipeline {
                 }
             }
         }
-        
-        stage(' Generate Training Data') {
+
+        stage(' Acquisition & Preparation') {
             steps {
-                echo '========== STAGE: Data Generation =========='
+                echo '========== STAGE: Data Preparation =========='
                 dir('fl-project') {
                     sh '''
-                        python generate_data.py
+                        # Run the preparation inside a container to ensure dependencies exist
+                        docker run --rm -v $(pwd):/app -w /app python:3.10-slim sh -c "pip install requests && python fetch_and_split.py"
                         ls -lah data/
-                        echo " Training data generated"
                     '''
                 }
             }
-        }
-        
+        }   
+                
         // =====================================================
         // DYNAMIC: Run selected attack scenario(s)
         // =====================================================
