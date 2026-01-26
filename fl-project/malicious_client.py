@@ -74,13 +74,18 @@ class MaliciousClient:
         return model
     
     def _load_data(self, data_file):
-        """Load training data"""
+        """Load training data from file (Compatible with Medium Article N-Grams)"""
         with open(data_file, 'r') as f:
-            data = json.load(f)
+            data = json.json.load(f)
         
-        X = np.array(data['X'])
-        y = np.array(data['y'])
-        logger.info(f" Loaded {len(X)} training samples")
+        # The data is now a list of sequences [word1, word2, word3, target]
+        data_array = np.array(data)
+        
+        # Split into X (first 3 words) and y (last word)
+        X = data_array[:, :-1]
+        y = data_array[:, -1]
+        
+        logger.info(f"Loaded {len(X)} samples for client {self.client_id}")
         return X, y
     
     def _register_with_server(self):
