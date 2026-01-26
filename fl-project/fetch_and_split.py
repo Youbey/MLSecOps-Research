@@ -2,43 +2,55 @@ import os
 import json
 import requests
 import re
-from collections import Counter
+import numpy as np
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 
-def fetch_and_split():
-    # 1. Download dataset
-    url = "https://raw.githubusercontent.com/sonu2759/Next-Word-Prediction-using-LSTM/master/sherlock-holm.es_stories_plain-text_advs.txt"
-    print(f"Downloading dataset from {url}...")
-    text = requests.get(url).text.lower()
+def prepare_federated_data():
+    # URL for Sherlock Holmes from Project Gutenberg
+    url = "https://www.gutenberg.org/cache/epub/1661/pg1661.txt"
+    print("Downloading dataset from Project Gutenberg...")
     
-    # 2. Basic Cleaning
-    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation
-    words = text.split()
+    response = requests.get(url)
+    text = response.text.lower()
 
-    # 3. Create Vocabulary (Top 1000 words as per your client.py)
-    vocab_size = 1000
-    common_words = [word for word, count in Counter(words).most_common(vocab_size - 1)]
-    word_to_id = {word: i + 1 for i, word in enumerate(common_words)}
-    word_to_id["<UNK>"] = 0 # Out-of-vocabulary token
+    # Article cleaning: Remove non-alphabetic characters but keep spaces
+    text = re.sub(r'[^a-z\s]', '', text)
+    
+    # Article step: Tokenizer process
+    tokenizer = Tokenizer()
+    tokenizer.fit_on_texts([text])
+    total_words = len(tokenizer.word_index) + 1
+    print(f"Total vocabulary size: {total_words}")
 
-    # 4. Generate Trigrams (3 words input -> 1 word output)
-    sequences = []
-    for i in range(len(words) - 3):
-        # Map words to IDs, use 0 if word not in top 1000
-        seq = [word_to_id.get(w, 0) for w in words[i:i+4]]
-        sequences.append(seq)
+    # Article step: N-gram generation
+    # This splits text by line and creates sliding windows (e.g., "the", "the adventures", "the adventures of")
+    input_sequences = []
+    for line in text.split('\n'):
+        token_list = tokenizer.texts_to_sequences([line])[0]
+        for i in range(1, len(token_list)):
+            n_gram_sequence = token_list[:i+1]
+            input_sequences.append(n_gram_sequence)
 
-    # 5. Split for clients (e.g., first 5000 for client_1, next 5000 for malicious)
+    # Article step: Pre-Padding
+    # We use a max_sequence_len of 4 (3 words context + 1 target) to match your current model
+    max_sequence_len = 4 
+    input_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_len, padding='pre'))
+    
+    print(f"Total sequences generated: {len(input_sequences)}")
     os.makedirs('data', exist_ok=True)
-    
+
+    # Split sequences for the clients (5,000 samples each)
     client_data = {
-        "client_1": sequences[:5000],
-        "malicious_client": sequences[5000:10000]
+        "client_1": input_sequences[:5000].tolist(),
+        "malicious_client": input_sequences[5000:10000].tolist()
     }
 
     for client_id, data in client_data.items():
-        with open(f"data/{client_id}_data.json", 'w') as f:
+        file_path = f"data/{client_id}_data.json"
+        with open(file_path, 'w') as f:
             json.dump(data, f)
-        print(f"Saved {len(data)} sequences to data/{client_id}_data.json")
+        print(f"Saved {len(data)} sequences to {file_path}")
 
 if __name__ == "__main__":
-    fetch_and_split()
+    prepare_federated_data()
