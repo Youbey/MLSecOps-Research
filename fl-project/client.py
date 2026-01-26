@@ -25,14 +25,16 @@ class FLClient:
         self._register_with_server()
     
     def _create_model(self):
-        """Create word prediction model (same as server)"""
+        # Using 1000 for vocab size to keep the model lightweight for your runner
         model = tf.keras.Sequential([
-            tf.keras.layers.Embedding(1000, 32, input_length=3),
-            tf.keras.layers.LSTM(64, return_sequences=False),
-            tf.keras.layers.Dense(128, activation='relu'),
-            tf.keras.layers.Dropout(0.3),
+            # Article: Embedding(total_words, 100, input_length=max_sequence_len-1)
+            tf.keras.layers.Embedding(1000, 100, input_length=3),
+            # Article: LSTM(150)
+            tf.keras.layers.LSTM(150),
+            # Article: Dense(total_words, activation='softmax')
             tf.keras.layers.Dense(1000, activation='softmax')
         ])
+        # Article: compile(loss='categorical_crossentropy', optimizer='adam')
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
         return model
     
