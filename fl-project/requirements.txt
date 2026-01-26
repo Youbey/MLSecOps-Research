@@ -1,7 +1,6 @@
 flask==2.3.0
 flask-cors==4.0.0
-# No-AVX build for Python 3.10 (Linux x86_64)
-https://github.com/bits-and-blobs/tensorflow-no-avx-wheels/raw/master/wheel-files/tensorflow-2.10.1-cp310-cp310-linux_x86_64.whl
+tensorflow==2.13.0
 numpy==1.24.3
 requests==2.31.0
 python-dotenv==1.0.0
