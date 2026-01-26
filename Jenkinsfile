@@ -71,27 +71,20 @@ pipeline {
                 }
             }
         }
-
+        
         stage(' Build (Single Time)') {
             steps {
                 echo '========== STAGE: Docker Build =========='
                 dir('fl-project') {
                     sh '''
-                        echo "Building custom Python images for ARM64..."
-                        docker build --platform linux/arm64 -t fl-project-server ./fl-server
-                        docker build --platform linux/arm64 -t fl-project-client_1 ./fl-client_1
-                        docker build --platform linux/arm64 -t fl-project-malicious_client ./fl-malicious-client
-                        
-                        echo "Pulling official images (Grafana, Loki, Prometheus)..."
-                        docker compose pull fl_grafana fl_loki fl_prometheus
-
-                        docker images | grep -E "fl-project|python|grafana|prometheus|loki|elasticsearch"
-                        echo "All images ready"
+                        echo "Building Docker images once (no rebuilds per attack)"
+                        docker compose build
+                        docker images | grep -E "fl-project|python"
+                        echo " Docker images built"
                     '''
                 }
             }
         }
-
         
         stage(' Deploy & Setup') {
             steps {

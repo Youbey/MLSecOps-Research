@@ -6,6 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      platform: linux/arm64
     container_name: fl_server
     environment:
       - FLASK_ENV=production
@@ -37,6 +38,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      platform: linux/arm64
     container_name: fl_client_1
     environment:
       - CLIENT_ID=client_1
@@ -67,6 +69,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      platform: linux/arm64
     container_name: fl_malicious_client
     environment:
       # Change ATTACK_MODE to: POISONING, STEALTHY, SYBIL_SIMULATION, GRADIENT_INVERSION, NONE
