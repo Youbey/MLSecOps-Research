@@ -7,38 +7,45 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Styles remain consistent with your high-end dark theme */
+        /* ALL ORIGINAL STYLES RESTORED */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --primary: #3b82f6; --primary-dark: #2563eb; --accent: #8b5cf6;
-            --background: #0f172a; --surface: #1e293b; --text-primary: #f1f5f9;
-            --text-secondary: #cbd5e1; --border: #475569;
+            --primary: #3b82f6; --primary-dark: #2563eb; --primary-light: #93c5fd;
+            --accent: #8b5cf6; --accent-light: #a78bfa; --background: #0f172a;
+            --surface: #1e293b; --surface-light: #334155; --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1; --border: #475569; --success: #10b981;
+            --warning: #f59e0b; --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            --hover-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
         }
-        body { margin: 0; font-family: 'Inter', sans-serif; background-color: #0f172a; color: var(--text-primary); background-image: url("./web/noise-KGQF6VKO.png"); }
-        nav { position: fixed; top: 0; width: 100%; z-index: 1000; backdrop-filter: blur(10px); background: rgba(15, 17, 42, 0.85); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 16px 0; }
+        body { padding: 0; font-family: 'Inter', sans-serif; background-color: rgba(25, 25, 29, 1); color: var(--text-primary); line-height: 1.6; min-height: 100vh; background-image: url("./web/noise-KGQF6VKO.png"); background-size: 200px 200px; }
+        nav { position: fixed; top: 0; width: 100%; z-index: 1000; backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding: 16px 0; background: rgba(15, 17, 42, 0.85); }
         .nav-content { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; }
-        .nav-links { display: flex; gap: 30px; }
-        .nav-links a { color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
-        .hero { padding: 160px 24px 80px; text-align: center; }
+        .nav-logo { display: flex; align-items: center; gap: 12px; font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+        .nav-links { display: flex; gap: 40px; }
+        .nav-links a { color: var(--text-secondary); font-weight: 500; font-size: 0.95rem; transition: color 0.3s; position: relative; }
+        .nav-links a:hover { color: var(--text-primary); }
+        .hero { padding-top: 140px; padding-bottom: 80px; text-align: center; }
+        .hero h1 { font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 800; margin-bottom: 24px; }
         .highlight { color: var(--primary); }
-        section { max-width: 1400px; margin: 80px auto; padding: 0 24px; }
-        h2 { font-size: 2rem; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
-        .diagram-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-top: 20px; }
-        .diagram-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
-        .diagram-card img { width: 100%; height: auto; border-radius: 8px; margin-top: 15px; background: rgba(0,0,0,0.2); }
-        .pdf-container { width: 100%; height: 800px; border-radius: 12px; overflow: hidden; }
-        .articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-        .article-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); padding: 24px; border-radius: 12px; }
-        .journal-container { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); padding: 40px; border-radius: 16px; line-height: 1.8; }
-        footer { padding: 40px; border-top: 1px solid var(--border); text-align: center; color: var(--text-secondary); }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+        .feature-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 32px; transition: all 0.3s ease; backdrop-filter: blur(10px); }
+        .feature-card:hover { transform: translateY(-4px); border-color: rgba(59, 130, 246, 0.3); }
+        section { max-width: 1400px; margin: 100px auto; padding: 0 24px; }
+        .pdf-container { width: 100%; height: 1000px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.3); }
+        .articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
+        .article-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 28px; transition: all 0.3s; }
+        .journal-container { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 40px; backdrop-filter: blur(10px); }
+        .image-container img { width: 100%; height: auto; display: block; border-radius: 8px; }
+        footer { border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 60px 24px; background: rgba(15, 17, 42, 0.5); text-align: center; }
     </style>
 </head>
 <body>
 <nav>
     <div class="nav-content">
-        <div class="nav-logo"><i class="fas fa-shield-alt"></i> <span>FL Security Hub</span></div>
+        <div class="nav-logo"><i class="fas fa-shield-alt"></i><span>FL Security Hub</span></div>
         <div class="nav-links">
             <a href="#sota">Documentation</a>
-            <a href="#architecture">System Design</a>
+            <a href="#design">System Design</a>
             <a href="#meta-model">Meta-model</a>
             <a href="#journal">Journal</a>
             <a href="#contributors">Contributors</a>
@@ -47,85 +54,91 @@
 </nav>
 
 <section class="hero">
-    <h1>MLSecOps for <span class="highlight">Federated Learning</span></h1>
-    <p>Integrating continuous security testing and resilience verification into the ML lifecycle.</p>
-</section>
-
-<section id="sota">
-    <h2><i class="fas fa-file-pdf"></i> Research Documentation</h2>
-    <div class="pdf-container">
-        <iframe src="https://youbey.github.io/MLSecOps-Research/main.pdf" width="100%" height="100%"></iframe>
+    <div class="hero-content">
+        <h1>Secure Federated Learning<br><span class="highlight">Research & Analysis</span></h1>
+        <p>Comprehensive research on federated learning security, threat models, and MLSecOps.</p>
     </div>
 </section>
 
-<section id="architecture">
+<section id="sota">
+    <h2><i class="fas fa-file-pdf"></i> State-of-the-Art</h2>
+    <div class="pdf-container">
+        <iframe src="https://youbey.github.io/MLSecOps-Research/main.pdf" title="SOTA PDF"></iframe>
+    </div>
+</section>
+
+<section id="design">
     <h2><i class="fas fa-project-diagram"></i> System Design</h2>
-    <p style="color: var(--text-secondary); margin-bottom: 30px;">Visual representations of our Federated Learning architecture, operational flow, and communication sequences.</p>
-    <div class="diagram-grid">
-        <div class="diagram-card">
-            <h3>Architecture Diagram</h3>
-            <img src="docs/Diagrams/Architecture_Diagram.svg" alt="System Architecture">
+    <p class="section-subtitle" style="margin-bottom: 30px; color: var(--text-secondary);">Structural and operational diagrams of the secure FL deployment.</p>
+    <div class="features-grid" style="padding: 0;">
+        <div class="feature-card">
+            <h3>Architecture</h3>
+            <div class="image-container"><img src="docs/Diagrams/Architecture_Diagram.svg" alt="Architecture"></div>
         </div>
-        <div class="diagram-card">
-            <h3>Flow Diagram</h3>
-            <img src="docs/Diagrams/Flow_Diagram.svg" alt="Operational Flow">
+        <div class="feature-card">
+            <h3>Process Flow</h3>
+            <div class="image-container"><img src="docs/Diagrams/Flow_Diagram.svg" alt="Flow"></div>
         </div>
-        <div class="diagram-card">
-            <h3>Sequence Diagram</h3>
-            <img src="docs/Diagrams/Sequence_Diagram.svg" alt="Communication Sequence">
+        <div class="feature-card">
+            <h3>Sequence</h3>
+            <div class="image-container"><img src="docs/Diagrams/Sequence_Diagram.svg" alt="Sequence"></div>
         </div>
     </div>
 </section>
 
 <section id="meta-model">
     <h2><i class="fas fa-cube"></i> Simulation Meta-model</h2>
-    <div class="journal-container" style="text-align: center;">
-        <img src="docs/Meta_Model/meta_model.svg" alt="Meta-model" style="max-width: 800px; width: 100%;">
-        <p style="margin-top: 20px; color: var(--text-secondary);">Structural relationships governing the simulation of attack vectors and defense mechanisms.</p>
+    <div class="journal-container">
+        <div class="image-container">
+            <img src="docs/Meta_Model/meta_model.svg" alt="Meta-model Diagram">
+        </div>
+        <p style="margin-top: 20px; color: var(--text-secondary);">Detailed meta-model for analyzing security aspects in federated learning.</p>
     </div>
 </section>
 
 <section id="articles">
-    <h2><i class="fas fa-book-open"></i> Literature Review</h2>
+    <h2><i class="fas fa-book-open"></i> Research Papers</h2>
     <div class="articles-grid" id="articlesGrid"></div>
 </section>
 
 <section id="journal">
-    <h2><i class="fas fa-newspaper"></i> Progress Journal</h2>
-    <div class="journal-container" id="journalContent">Loading journal updates...</div>
+    <h2><i class="fas fa-newspaper"></i> Research Journal</h2>
+    <div class="journal-container">
+        <div class="journal-content" id="journalContent">Loading journal...</div>
+    </div>
 </section>
 
 <section id="contributors">
-    <h2><i class="fas fa-users"></i> Research Team</h2>
+    <h2><i class="fas fa-users"></i> Our Contributors</h2>
     <div class="articles-grid">
-        <div class="article-card"><strong>BENDRAOU Ayoub</strong><br>Contributor</div>
-        <div class="article-card"><strong>OUCHTA Nazih</strong><br>Contributor</div>
-        <div class="article-card"><strong>GHOUDANE Salim</strong><br>Contributor</div>
-        <div class="article-card"><strong>FSAHI Aya</strong><br>Contributor</div>
+        <div class="article-card"><h3>BENDRAOU Ayoub</h3><p>youbey</p></div>
+        <div class="article-card"><h3>OUCHTA Nazih</h3><p>Yvesei</p></div>
+        <div class="article-card"><h3>GHOUDANE Salim</h3><p>Contributor</p></div>
+        <div class="article-card"><h3>FSAHI Aya</h3><p>Contributor</p></div>
     </div>
 </section>
 
 <footer>
-    <p>&copy; 2026 Federated Learning Security Hub | MLSecOps Research</p>
+    <p>&copy; 2026 Federated Learning Security Hub. All rights reserved.</p>
 </footer>
 
 <script>
-    // Synchronized with your Article directory
     const papers = [
-        { title: "Survey on Federated Learning", file: "Articles/A Survey on Federated Learning.pdf" },
-        { title: "Healthcare Informatics", file: "Articles/Adoption_of_Federated_Learning_for_Healthcare_Informatics_Emerging_Applications_and_Future_Directions.pdf" },
-        { title: "Backdoor Attacks Survey", file: "Articles/Backdoor Attacks and Defenses in Federated Learning_ Survey, Challenges and Future Research Directions by T.D. Nguyen.pdf" },
+        { title: "A Survey on Federated Learning", file: "Articles/A Survey on Federated Learning.pdf" },
+        { title: "FL in Healthcare Informatics", file: "Articles/Adoption_of_Federated_Learning_for_Healthcare_Informatics_Emerging_Applications_and_Future_Directions.pdf" },
+        { title: "Backdoor Attacks and Defenses", file: "Articles/Backdoor Attacks and Defenses in Federated Learning_ Survey, Challenges and Future Research Directions by T.D. Nguyen.pdf" },
         { title: "Deep Leakage from Gradients", file: "Articles/NeurIPS-2019-deep-leakage-from-gradients-Paper.pdf" },
         { title: "Byzantine-Tolerant GD", file: "Articles/NIPS-2017-machine-learning-with-adversaries-byzantine-tolerant-gradient-descent-Paper.pdf" },
-        { title: "Poisoning & Privacy", file: "Articles/raid20-fung.pdf" }
+        { title: "Poisoning & Privacy", file: "Articles/raid20-fung.pdf" },
+        { title: "Threats Analysis", file: "Articles/Threats_Lingjuan_Lyu.pdf" }
     ];
 
     function loadArticles() {
         const grid = document.getElementById('articlesGrid');
         grid.innerHTML = papers.map(p => `
                 <div class="article-card">
-                    <div style="height: 3em; font-weight: 700;">${p.title}</div>
-                    <a href="${p.file}" target="_blank" style="color: var(--primary); font-size: 0.85rem;">Read Paper <i class="fas fa-external-link-alt"></i></a>
+                    <div class="article-title" style="font-weight:700; margin-bottom:15px;">${p.title}</div>
+                    <a href="${p.file}" target="_blank" style="color:var(--primary); font-size:0.9rem;">View Document <i class="fas fa-arrow-right"></i></a>
                 </div>
             `).join('');
     }
@@ -137,18 +150,18 @@
             const text = await response.text();
             content.innerHTML = markdownToHtml(text);
         } catch (error) {
-            content.innerHTML = `<div style="color: #fca5a5;">Could not sync journal.md</div>`;
+            content.innerHTML = `<div class="error">Journal failed to load.</div>`;
         }
     }
 
     function markdownToHtml(markdown) {
         return markdown
-            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-            .replace(/^\- (.*$)/gim, '<li>$1</li>')
-            .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-            .replace(/\n/gim, '<br>');
+            .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
+            .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
+            .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^- (.*?)$/gm, '<li>$1</li>')
+            .replace(/\n/g, '<br>');
     }
 
     loadArticles();
