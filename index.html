@@ -7,888 +7,152 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* Styles remain consistent with your high-end dark theme */
         :root {
-            --primary: #3b82f6;
-            --primary-dark: #2563eb;
-            --primary-light: #93c5fd;
-            --accent: #8b5cf6;
-            --accent-light: #a78bfa;
-            --background: #0f172a;
-            --surface: #1e293b;
-            --surface-light: #334155;
-            --text-primary: #f1f5f9;
-            --text-secondary: #cbd5e1;
-            --border: #475569;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-            --hover-shadow: 0 12px 40px rgba(59, 130, 246, 0.15);
-        }
-
-        body {
-            padding: 0;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background-color: rgba(25, 25, 29, 1);
-            color: var(--text-primary);
-            line-height: 1.6;
-            min-height: 100vh;
-            background-image: url("./web/noise-KGQF6VKO.png");
-            background-size: 200px 200px;
-            background-position: 0 0;
-        }
-
-        a {
-            text-decoration: none;
-            color: inherit;
-        }
-
-        /* Navigation */
-        nav {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            z-index: 1000;
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 16px 0;
-            background: rgba(15, 17, 42, 0.85);
-        }
-
-        .nav-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .nav-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .nav-logo i {
-            font-size: 1.5rem;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 40px;
-        }
-
-        .nav-links a {
-            color: var(--text-secondary);
-            font-weight: 500;
-            font-size: 0.95rem;
-            transition: color 0.3s ease;
-            position: relative;
-        }
-
-        .nav-links a:hover {
-            color: var(--text-primary);
-        }
-
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background-color: var(--primary);
-            transition: width 0.3s ease;
-        }
-
-        .nav-links a:hover::after {
-            width: 100%;
-        }
-
-        /* Hero Section */
-        .hero {
-            padding-top: 140px;
-            padding-bottom: 80px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hero-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 24px;
-            text-align: center;
-        }
-
-        .hero h1 {
-            margin-top: 60px;
-            font-size: clamp(2.5rem, 8vw, 4rem);
-            font-weight: 800;
-            line-height: 1.2;
-            margin-bottom: 24px;
-            letter-spacing: -0.02em;
-        }
-
-        .hero h1 .highlight {
-            color: var(--primary);
-            position: relative;
-            display: inline-block;
-        }
-
-        .hero h1 .highlight::after {
-            content: '';
-            position: absolute;
-            bottom: 4px;
-            left: 0;
-            width: 100%;
-            height: 8px;
-            background-color: rgba(59, 130, 246, 0.2);
-            z-index: -1;
-            border-radius: 4px;
-        }
-
-        .hero p {
-            font-size: 1.125rem;
-            color: var(--text-secondary);
-            max-width: 600px;
-            margin: 0 auto 10px;
-            line-height: 1.6;
-            margin-bottom: 48px;
-        }
-
-        .hero-buttons {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 60px;
-        }
-
-        .btn {
-            padding: 12px 32px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.95rem;
-            cursor: pointer;
-            border: none;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background-color: var(--primary);
-            color: white;
-            border: 1px solid var(--primary);
-            box-shadow: var(--card-shadow);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--hover-shadow);
-            background-color: var(--primary-dark);
-        }
-
-        .btn-secondary {
-            background: transparent;
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: var(--text-secondary);
-            transform: translateY(-2px);
-        }
-
-        /* Features Grid */
-        .features {
-            margin-top: 80px;
-            padding-bottom: 20px;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
-
-        .feature-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 32px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            box-shadow: var(--card-shadow);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background-color: var(--primary);
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform 0.3s ease;
-        }
-
-        .feature-card:hover {
-            background: rgba(255, 255, 255, 0.04);
-            border-color: rgba(59, 130, 246, 0.3);
-            transform: translateY(-4px);
-            box-shadow: var(--hover-shadow);
-        }
-
-        .feature-card:hover::before {
-            transform: scaleX(1);
-        }
-
-        .feature-card h3 {
-            font-size: 1.125rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .feature-card h3 i {
-            color: var(--primary);
-        }
-
-        .feature-card p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.6;
-        }
-
-        /* Content Section */
-        section {
-            max-width: 1400px;
-            margin: 100px auto;
-            padding: 0 24px;
-        }
-
-        section h2 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin-bottom: 16px;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        section h2 i {
-            color: var(--primary);
-        }
-
-        .section-subtitle {
-            font-size: 1.125rem;
-            color: var(--text-secondary);
-            margin-bottom: 48px;
-            max-width: 600px;
-        }
-
-        /* PDF Viewer */
-        .pdf-viewer {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 40px;
-            backdrop-filter: blur(10px);
-            margin-bottom: 40px;
-            box-shadow: var(--card-shadow);
-        }
-
-        .pdf-viewer h3 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            color: var(--text-primary);
-        }
-
-        .pdf-viewer p {
-            color: var(--text-secondary);
-            margin-bottom: 24px;
-            font-size: 1rem;
-        }
-
-        .pdf-container {
-            width: 100%;
-            height: 1000px;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(0, 0, 0, 0.3);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
-        }
-
-        .pdf-container:hover {
-            border-color: rgba(59, 130, 246, 0.3);
-            box-shadow: 0 20px 60px rgba(59, 130, 246, 0.1);
-        }
-
-        .pdf-container iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        /* Image Viewer */
-        .image-viewer {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 40px;
-            backdrop-filter: blur(10px);
-            margin-bottom: 40px;
-            box-shadow: var(--card-shadow);
-        }
-
-        .image-container {
-            width: 100%;
-            height: auto; /* Changed from fixed height to auto for images */
-            max-height: 1000px; /* Optional: set a max-height */
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(0, 0, 0, 0.3);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
-        }
-
-        .image-container:hover {
-            border-color: rgba(59, 130, 246, 0.3);
-            box-shadow: 0 20px 60px rgba(59, 130, 246, 0.1);
-        }
-
-        .image-container img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        /* Articles Grid */
-        .articles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 24px;
-            margin-top: 40px;
-        }
-
-        .article-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            padding: 28px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            display: flex;
-            flex-direction: column;
-            box-shadow: var(--card-shadow);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .article-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background-color: var(--primary);
-            transform: scaleY(0);
-            transform-origin: top;
-            transition: transform 0.3s ease;
-        }
-
-        .article-card:hover {
-            background: rgba(59, 130, 246, 0.08);
-            border-color: rgba(59, 130, 246, 0.4);
-            transform: translateY(-8px);
-            box-shadow: var(--hover-shadow);
-        }
-
-        .article-card:hover::before {
-            transform: scaleY(1);
-        }
-
-        .article-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 16px;
-            color: var(--text-primary);
-            line-height: 1.4;
-            flex-grow: 1;
-        }
-
-        .article-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 24px;
-        }
-
-        .btn-view {
-            flex: 1;
-            background: transparent;
-            color: var(--primary);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            padding: 10px 16px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .btn-view:hover {
-            background: rgba(59, 130, 246, 0.1);
-            border-color: var(--primary);
-            transform: translateY(-2px);
-        }
-
-        .btn-download {
-            flex: 1;
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .btn-download:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
-            background: var(--accent-light);
-        }
-
-        /* Journal Section */
-        .journal-container {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 40px;
-            backdrop-filter: blur(10px);
-            box-shadow: var(--card-shadow);
-        }
-
-        .journal-content {
-            color: var(--text-secondary);
-            font-size: 1rem;
-            line-height: 1.8;
-        }
-
-        .journal-content h1, .journal-content h2, .journal-content h3, .journal-content h4 {
-            color: var(--text-primary);
-            margin-top: 32px;
-            margin-bottom: 16px;
-            font-weight: 700;
-        }
-
-        .journal-content h1 { font-size: 2rem; }
-        .journal-content h2 { font-size: 1.5rem; }
-        .journal-content h3 { font-size: 1.25rem; }
-        .journal-content h4 { font-size: 1.1rem; }
-
-        .journal-content p {
-            margin-bottom: 16px;
-        }
-
-        .journal-content ul, .journal-content ol {
-            margin: 16px 0 16px 24px;
-        }
-
-        .journal-content li {
-            margin-bottom: 8px;
-        }
-
-        .journal-content code {
-            background: rgba(0, 0, 0, 0.4);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Monaco', 'Courier New', monospace;
-            font-size: 0.9rem;
-            color: var(--accent-light);
-        }
-
-        .journal-content pre {
-            background: rgba(0, 0, 0, 0.4);
-            padding: 16px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 16px 0;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .journal-content pre code {
-            background: none;
-            padding: 0;
-            color: var(--text-primary);
-        }
-
-        .loading {
-            text-align: center;
-            color: var(--text-secondary);
-            padding: 60px 20px;
-            font-size: 1rem;
-        }
-
-        .error {
-            color: #fca5a5;
-            padding: 20px;
-            background: rgba(248, 113, 113, 0.08);
-            border-radius: 8px;
-            border: 1px solid rgba(248, 113, 113, 0.2);
-        }
-
-        /* Footer */
-        footer {
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 60px 24px;
-            margin-top: 100px;
-            background: rgba(15, 17, 42, 0.5);
-        }
-
-        .footer-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 40px;
-            margin-bottom: 40px;
-        }
-
-        .footer-section h4 {
-            font-size: 0.95rem;
-            font-weight: 700;
-            margin-bottom: 16px;
-            color: var(--text-primary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .footer-section a {
-            display: block;
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-            font-size: 0.9rem;
-            transition: color 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .footer-section a:hover {
-            color: var(--text-primary);
-        }
-
-        .footer-bottom {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding-top: 40px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            text-align: center;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2rem;
-            }
-
-            .nav-links {
-                gap: 24px;
-                font-size: 0.9rem;
-            }
-
-            .hero-buttons {
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .btn {
-                width: 100%;
-            }
-
-            .pdf-container {
-                height: 400px;
-            }
-
-            .articles-grid {
-                grid-template-columns: 1fr;
-            }
-
-            section h2 {
-                font-size: 1.75rem;
-            }
-
-            .pdf-viewer, .journal-container {
-                padding: 24px;
-            }
-        }
+            --primary: #3b82f6; --primary-dark: #2563eb; --accent: #8b5cf6;
+            --background: #0f172a; --surface: #1e293b; --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1; --border: #475569;
+        }
+        body { margin: 0; font-family: 'Inter', sans-serif; background-color: #0f172a; color: var(--text-primary); background-image: url("./web/noise-KGQF6VKO.png"); }
+        nav { position: fixed; top: 0; width: 100%; z-index: 1000; backdrop-filter: blur(10px); background: rgba(15, 17, 42, 0.85); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 16px 0; }
+        .nav-content { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; }
+        .nav-links { display: flex; gap: 30px; }
+        .nav-links a { color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; }
+        .hero { padding: 160px 24px 80px; text-align: center; }
+        .highlight { color: var(--primary); }
+        section { max-width: 1400px; margin: 80px auto; padding: 0 24px; }
+        h2 { font-size: 2rem; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+        .diagram-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-top: 20px; }
+        .diagram-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
+        .diagram-card img { width: 100%; height: auto; border-radius: 8px; margin-top: 15px; background: rgba(0,0,0,0.2); }
+        .pdf-container { width: 100%; height: 800px; border-radius: 12px; overflow: hidden; }
+        .articles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .article-card { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); padding: 24px; border-radius: 12px; }
+        .journal-container { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); padding: 40px; border-radius: 16px; line-height: 1.8; }
+        footer { padding: 40px; border-top: 1px solid var(--border); text-align: center; color: var(--text-secondary); }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav>
-        <div class="nav-content">
-            <div class="nav-logo">
-                <i class="fas fa-shield-alt"></i>
-                <span>FL Security Hub</span>
-            </div>
-            <div class="nav-links">
-                <a href="#sota"><i class="fas fa-file-alt"></i> Documentation</a>
-                <a href="#meta-model"><i class="fas fa-project-diagram"></i> Meta-model</a>
-                <a href="#journal"><i class="fas fa-newspaper"></i> Journal</a>
-                <a href="#contributors"><i class="fas fa-users"></i> Contributors</a>
-            </div>
+<nav>
+    <div class="nav-content">
+        <div class="nav-logo"><i class="fas fa-shield-alt"></i> <span>FL Security Hub</span></div>
+        <div class="nav-links">
+            <a href="#sota">Documentation</a>
+            <a href="#architecture">System Design</a>
+            <a href="#meta-model">Meta-model</a>
+            <a href="#journal">Journal</a>
+            <a href="#contributors">Contributors</a>
         </div>
-    </nav>
+    </div>
+</nav>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-content">
-            <h1>Secure Federated Learning<br><span class="highlight">Research & Analysis</span></h1>
-            <p>Comprehensive research on federated learning security, threat models, attack vectors, and defense mechanisms. Explore our collection of peer-reviewed papers and the latest security insights.</p>
-            <div class="hero-buttons">
-                <a href="#sota" class="btn btn-primary"><i class="fas fa-search"></i> Explore SOTA</a>
-                <a href="#articles" class="btn btn-secondary"><i class="fas fa-download"></i> View Papers</a>
-            </div>
+<section class="hero">
+    <h1>MLSecOps for <span class="highlight">Federated Learning</span></h1>
+    <p>Integrating continuous security testing and resilience verification into the ML lifecycle.</p>
+</section>
+
+<section id="sota">
+    <h2><i class="fas fa-file-pdf"></i> Research Documentation</h2>
+    <div class="pdf-container">
+        <iframe src="https://youbey.github.io/MLSecOps-Research/main.pdf" width="100%" height="100%"></iframe>
+    </div>
+</section>
+
+<section id="architecture">
+    <h2><i class="fas fa-project-diagram"></i> System Design</h2>
+    <p style="color: var(--text-secondary); margin-bottom: 30px;">Visual representations of our Federated Learning architecture, operational flow, and communication sequences.</p>
+    <div class="diagram-grid">
+        <div class="diagram-card">
+            <h3>Architecture Diagram</h3>
+            <img src="docs/Diagrams/Architecture_Diagram.svg" alt="System Architecture">
         </div>
-    </section>
-
-    <!-- Features Section -->
-    <section class="features">
-        <div class="features-grid">
-            <div class="feature-card">
-                <h3><i class="fas fa-lock"></i> Privacy Protection</h3>
-                <p>Advanced techniques to protect user data privacy while training machine learning models across distributed devices.</p>
-            </div>
-            <div class="feature-card">
-                <h3><i class="fas fa-shield-alt"></i> Security Frameworks</h3>
-                <p>Comprehensive security frameworks designed to protect federated learning systems from various attack vectors.</p>
-            </div>
-            <div class="feature-card">
-                <h3><i class="fas fa-chart-line"></i> Performance Analysis</h3>
-                <p>In-depth analysis of federated learning performance metrics and optimization strategies.</p>
-            </div>
+        <div class="diagram-card">
+            <h3>Flow Diagram</h3>
+            <img src="docs/Diagrams/Flow_Diagram.svg" alt="Operational Flow">
         </div>
-    </section>
-
-    <!-- SOTA PDF Section -->
-    <section id="sota">
-        <h2><i class="fas fa-file-pdf"></i> State-of-the-Art Document</h2>
-        <p class="section-subtitle">Comprehensive overview of federated learning security, threat models, and defense mechanisms.</p>
-        <div class="pdf-viewer">
-            <div class="pdf-container">
-                <iframe src="https://youbey.github.io/MLSecOps-Research/main.pdf" title="SOTA PDF"></iframe>
-            </div>
+        <div class="diagram-card">
+            <h3>Sequence Diagram</h3>
+            <img src="docs/Diagrams/Sequence_Diagram.svg" alt="Communication Sequence">
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- Papers Section -->
-    <section id="articles">
-        <h2><i class="fas fa-book-open"></i> Research Papers</h2>
-        <p class="section-subtitle">Peer-reviewed papers and studies advancing the field of federated learning security.</p>
-        <div class="articles-grid" id="articlesGrid">
-            <div class="loading">Loading papers...</div>
-        </div>
-    </section>
+<section id="meta-model">
+    <h2><i class="fas fa-cube"></i> Simulation Meta-model</h2>
+    <div class="journal-container" style="text-align: center;">
+        <img src="docs/Meta_Model/meta_model.svg" alt="Meta-model" style="max-width: 800px; width: 100%;">
+        <p style="margin-top: 20px; color: var(--text-secondary);">Structural relationships governing the simulation of attack vectors and defense mechanisms.</p>
+    </div>
+</section>
 
-    <!-- Meta-model Section -->
-    <section id="meta-model">
-        <h2><i class="fas fa-project-diagram"></i> Our Meta-model</h2>
-        <p class="section-subtitle">Explore the meta-model guiding our simulation about federated learning security.</p>
-        <div class="journal-container">
-            <div class="journal-content">
-                <h3>Meta-model Overview</h3>
-                <div class="image-viewer">
-                    <div class="image-container">
-                        <img src="docs/Meta_Model/meta_model.svg" alt="Meta-model Diagram">
-                    </div>
-                </div>
-                <p>This section will detail the meta-model developed for understanding and analyzing security aspects in federated learning. It will include diagrams, descriptions of components, and their interrelationships.</p>
-                <p>Further content, including interactive diagrams or detailed specifications, will be added here.</p>
-            </div>
-        </div>
-    </section>
+<section id="articles">
+    <h2><i class="fas fa-book-open"></i> Literature Review</h2>
+    <div class="articles-grid" id="articlesGrid"></div>
+</section>
 
-    <!-- Journal Section -->
-    <section id="journal">
-        <h2><i class="fas fa-newspaper"></i> Research Journal</h2>
-        <p class="section-subtitle">Latest insights, discoveries, and detailed notes on federated learning security research.</p>
-        <div class="journal-container">
-            <div class="journal-content" id="journalContent">
-                <div class="loading">Loading journal...</div>
-            </div>
-        </div>
-    </section>
+<section id="journal">
+    <h2><i class="fas fa-newspaper"></i> Progress Journal</h2>
+    <div class="journal-container" id="journalContent">Loading journal updates...</div>
+</section>
 
-    <!-- Contributors Section -->
-    <section id="contributors">
-        <h2><i class="fas fa-users"></i> Our Contributors</h2>
-        <p class="section-subtitle">Meet the dedicated researchers and developers behind the Federated Learning Security Hub.</p>
-        <div class="articles-grid"> <!-- Reusing articles-grid for a similar layout -->
-            <div class="article-card">
-                <div class="article-title">Youbey</div>
-                <div class="article-actions">
-                    <a href="https://www.linkedin.com/in/youbey/" target="_blank" class="btn-view"><i class="fab fa-linkedin"></i> LinkedIn</a>
-                </div>
-            </div>
-            <div class="article-card">
-                <div class="article-title">Yvesei</div>
-                <div class="article-actions">
-                    <a href="https://www.linkedin.com/in/nazihouchta" target="_blank" class="btn-view"><i class="fab fa-linkedin"></i> LinkedIn</a>
-                </div>
-            </div>
-            <div class="article-card">
-                <div class="article-title">Salim Ghoudane</div>
-                <div class="article-actions">
-                    <a href="https://www.linkedin.com/in/contributor3/" target="_blank" class="btn-view"><i class="fab fa-linkedin"></i> LinkedIn</a>
-                </div>
-            </div>
-            <div class="article-card">
-                <div class="article-title">Aya Fsahi</div>
-                <div class="article-actions">
-                    <a href="https://www.linkedin.com/in/contributor4/" target="_blank" class="btn-view"><i class="fab fa-linkedin"></i> LinkedIn</a>
-                </div>
-            </div>
-        </div>
-    </section>
+<section id="contributors">
+    <h2><i class="fas fa-users"></i> Research Team</h2>
+    <div class="articles-grid">
+        <div class="article-card"><strong>BENDRAOU Ayoub</strong><br>Contributor</div>
+        <div class="article-card"><strong>OUCHTA Nazih</strong><br>Contributor</div>
+        <div class="article-card"><strong>GHOUDANE Salim</strong><br>Contributor</div>
+        <div class="article-card"><strong>FSAHI Aya</strong><br>Contributor</div>
+    </div>
+</section>
 
-    <!-- Footer -->
-    <footer>
-        <div class="footer-content">
-            <div class="footer-section">
-                <h4>Resources</h4>
-                <a href="#sota"><i class="fas fa-file-alt"></i> SOTA Document</a>
-                <a href="#articles"><i class="fas fa-book"></i> Research Papers</a>
-                <a href="#journal"><i class="fas fa-newspaper"></i> Journal</a>
-            </div>
-            <div class="footer-section">
-                <h4>Topics</h4>
-                <a href="#"><i class="fas fa-brain"></i> Federated Learning</a>
-                <a href="#"><i class="fas fa-shield-alt"></i> Security</a>
-                <a href="#"><i class="fas fa-user-secret"></i> Privacy</a>
-            </div>
-            <div class="footer-section">
-                <h4>Learn More</h4>
-                <a href="#"><i class="fab fa-github"></i> GitHub</a>
-                <a href="#"><i class="fas fa-book"></i> Documentation</a>
-                <a href="#"><i class="fas fa-envelope"></i> Contact</a>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; 2024 Federated Learning Security Hub. All rights reserved.</p>
-        </div>
-    </footer>
+<footer>
+    <p>&copy; 2026 Federated Learning Security Hub | MLSecOps Research</p>
+</footer>
 
-    <script>
-        const papers = [
-            { title: "A Survey on Federated Learning", file: "Articles/A Survey on Federated Learning.pdf" },
-            { title: "Adoption of Federated Learning for Healthcare Informatics", file: "Articles/Adoption_of_Federated_Learning_for_Healthcare_Informatics_Emerging_Applications_and_Future_Directions.pdf" },
-            { title: "Advances and Open Problems in Federated Learning", file: "Articles/Advances and Open Problems in Federated Learning.pdf" },
-            { title: "Backdoor Attacks and Defenses in Federated Learning", file: "Articles/Backdoor Attacks and Defenses in Federated Learning_ Survey, Challenges and Future Research Directions by T.D. Nguyen.pdf" },
-            { title: "Delving into the Adversarial Robustness of Federated Learning", file: "Articles/Delving into the Adversarial Robustness of Federated Learning.pdf" },
-            { title: "FL Definition", file: "Articles/FL DEFINITION.pdf" },
-            { title: "Federated Learning Challenges, Methods, and Future Directions", file: "Articles/Federated Learning Challenges, Methods, and Future Directions.pdf" },
-            { title: "How To Backdoor Federated Learning", file: "Articles/How To Backdoor Federated Learning — Bagdasaryan et al. (2020).pdf" },
-            { title: "Byzantine-Tolerant Gradient Descent", file: "Articles/NIPS-2017-machine-learning-with-adversaries-byzantine-tolerant-gradient-descent-Paper.pdf" },
-            { title: "Deep Leakage from Gradients", file: "Articles/NeurIPS-2019-deep-leakage-from-gradients-Paper.pdf" },
-            { title: "Taxonomy of Attacks in Federated Learning", file: "Articles/Taxonomy_of_Attacks_in_Federated_Learning__Adapted_from_Liu_et_al___2023_.pdf" },
-            { title: "Threats - Lingjuan Lyu", file: "Articles/Threats_Lingjuan_Lyu.pdf" },
-            { title: "Poisoning Attacks and Privacy-Preserving Approaches", file: "Articles/raid20-fung.pdf" }
-        ];
+<script>
+    // Synchronized with your Article directory
+    const papers = [
+        { title: "Survey on Federated Learning", file: "Articles/A Survey on Federated Learning.pdf" },
+        { title: "Healthcare Informatics", file: "Articles/Adoption_of_Federated_Learning_for_Healthcare_Informatics_Emerging_Applications_and_Future_Directions.pdf" },
+        { title: "Backdoor Attacks Survey", file: "Articles/Backdoor Attacks and Defenses in Federated Learning_ Survey, Challenges and Future Research Directions by T.D. Nguyen.pdf" },
+        { title: "Deep Leakage from Gradients", file: "Articles/NeurIPS-2019-deep-leakage-from-gradients-Paper.pdf" },
+        { title: "Byzantine-Tolerant GD", file: "Articles/NIPS-2017-machine-learning-with-adversaries-byzantine-tolerant-gradient-descent-Paper.pdf" },
+        { title: "Poisoning & Privacy", file: "Articles/raid20-fung.pdf" }
+    ];
 
-        function loadArticles() {
-            const grid = document.getElementById('articlesGrid');
-            grid.innerHTML = papers.map(paper => `
+    function loadArticles() {
+        const grid = document.getElementById('articlesGrid');
+        grid.innerHTML = papers.map(p => `
                 <div class="article-card">
-                    <div class="article-title">${paper.title}</div>
-                    <div class="article-actions">
-                        <a href="${paper.file}" target="_blank" class="btn-view"><i class="fas fa-eye"></i> View</a>
-                        <a href="${paper.file}" download class="btn-download"><i class="fas fa-download"></i> Download</a>
-                    </div>
+                    <div style="height: 3em; font-weight: 700;">${p.title}</div>
+                    <a href="${p.file}" target="_blank" style="color: var(--primary); font-size: 0.85rem;">Read Paper <i class="fas fa-external-link-alt"></i></a>
                 </div>
             `).join('');
-        }
+    }
 
-        async function loadJournal() {
-            const content = document.getElementById('journalContent');
-            try {
-                const response = await fetch('journal.md');
-                content.innerHTML = markdownToHtml(journalContent);
-            } catch (error) {
-                content.innerHTML = `<div class="error"><strong>Journal not found</strong><br>Could not load journal.md</div>`;
-            }
+    async function loadJournal() {
+        const content = document.getElementById('journalContent');
+        try {
+            const response = await fetch('journal.md');
+            const text = await response.text();
+            content.innerHTML = markdownToHtml(text);
+        } catch (error) {
+            content.innerHTML = `<div style="color: #fca5a5;">Could not sync journal.md</div>`;
         }
+    }
 
-        function markdownToHtml(markdown) {
-            let html = markdown
-                .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
-                .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
-                .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/__(.*?)__/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/_(.+?)_/g, '<em>$1</em>')
-                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
-                .replace(/`([^`]+)`/g, '<code>$1</code>')
-                .split('\n')
-                .map(line => {
-                    if (line.match(/^#{1,4} /)) return line;
-                    if (line.match(/^- /)) return line.replace(/^- /, '<li>') + '</li>';
-                    if (line.trim() === '') return '';
-                    if (!line.match(/^<[a-z]/)) return '<p>' + line + '</p>';
-                    return line;
-                })
-                .join('\n')
-                .replace(/(<li>.*?<\/li>)/s, '<ul>$1</ul>')
-                .replace(/<\/li>\s*<\/ul>\s*<ul>\s*<li>/g, '</li><li>')
-                .replace(/<p><\/p>/g, '')
-                .replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
-            return html;
-        }
+    function markdownToHtml(markdown) {
+        return markdown
+            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^\- (.*$)/gim, '<li>$1</li>')
+            .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+            .replace(/\n/gim, '<br>');
+    }
 
-        loadArticles();
-        loadJournal();
-    </script>
+    loadArticles();
+    loadJournal();
+</script>
 </body>
 </html>
