@@ -244,12 +244,14 @@ from datetime import datetime
 with open('security_analysis_reports/analysis.json') as f:
     analysis = json.load(f)
 
+attack_mode = "${params.ATTACK_MODE}"
+
 # Generate HTML report
 html = f"""
 <!DOCTYPE html>
 <html>
 <head>
-    <title>FL Security Test Report - Attack Scenario: {params.ATTACK_MODE}</title>
+    <title>FL Security Test Report - Attack Scenario: {attack_mode}</title>
     <style>
         body {{ font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }}
         .container {{ max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }}
@@ -270,7 +272,7 @@ html = f"""
     <div class="container">
         <div class="header">
             <h1> FL Security Test Report</h1>
-            <p>Attack Scenario: <strong>{params.ATTACK_MODE}</strong></p>
+            <p>Attack Scenario: <strong>{attack_mode}</strong></p>
             <p>Generated: {datetime.now().isoformat()}</p>
         </div>
         
