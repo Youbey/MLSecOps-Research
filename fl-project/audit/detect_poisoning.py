@@ -18,6 +18,12 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("PoisoningDetector")
 
+# Import structured logger
+try:
+    from structured_logger import logger as structured_logger
+except ImportError:
+    structured_logger = None
+
 class PoisoningDetector:
     def __init__(self, threshold_std=2.5, history_window=10):
         """
@@ -113,7 +119,7 @@ class PoisoningDetector:
             # Flagged if > mean + 2.5*std (statistically anomalous)
             if l2_norm > l2_mean + self.threshold_std * l2_std:
                 confidence = min(1.0, (l2_norm - l2_mean) / (self.threshold_std * l2_std + 1e-10))
-                alerts.append({
+                alert = {
                     'type': 'MODEL_REPLACEMENT',
                     'severity': 'HIGH',
                     'client_id': client_id,
@@ -123,7 +129,17 @@ class PoisoningDetector:
                         'l2_norm': float(l2_norm),
                         'expected_l2_norm': float(l2_mean)
                     }
-                })
+                }
+                alerts.append(alert)
+                
+                # Log via structured logger
+                if structured_logger:
+                    structured_logger.log_attack_detected(
+                        attack_type='MODEL_REPLACEMENT',
+                        client_id=client_id,
+                        confidence=confidence,
+                        evidence={'l2_norm': float(l2_norm)}
+                    )
         
         # ==========================================
         # ATTACK 2: Constrain-and-Scale (Stealthy)
@@ -140,7 +156,7 @@ class PoisoningDetector:
                 std_weight = metrics['std_weight']
                 
                 if std_weight < benign_direction * 0.3:  # 30% below average
-                    alerts.append({
+                    alert = {
                         'type': 'CONSTRAIN_AND_SCALE',
                         'severity': 'MEDIUM',
                         'client_id': client_id,
@@ -150,7 +166,17 @@ class PoisoningDetector:
                             'std_weight': float(std_weight),
                             'expected_std': float(benign_direction)
                         }
-                    })
+                    }
+                    alerts.append(alert)
+                    
+                    # Log via structured logger
+                    if structured_logger:
+                        structured_logger.log_attack_detected(
+                            attack_type='CONSTRAIN_AND_SCALE',
+                            client_id=client_id,
+                            confidence=0.6,
+                            evidence={'std_weight': float(std_weight)}
+                        )
         
         # ==========================================
         # ATTACK 3: Distributed Backdoor (Multi-client)
@@ -169,7 +195,7 @@ class PoisoningDetector:
                     
                     # High similarity across multiple rounds = suspicious
                     if similarity > 0.95:
-                        alerts.append({
+                        alert = {
                             'type': 'DISTRIBUTED_BACKDOOR',
                             'severity': 'MEDIUM',
                             'client_id': f'{client_a} & {client_b}',
@@ -180,7 +206,17 @@ class PoisoningDetector:
                                 'mean_a': float(mean_a),
                                 'mean_b': float(mean_b)
                             }
-                        })
+                        }
+                        alerts.append(alert)
+                        
+                        # Log via structured logger
+                        if structured_logger:
+                            structured_logger.log_attack_detected(
+                                attack_type='DISTRIBUTED_BACKDOOR',
+                                client_id=f'{client_a}&{client_b}',
+                                confidence=0.7,
+                                evidence={'similarity': float(similarity)}
+                            )
         
         return {
             'timestamp': datetime.now().isoformat(),

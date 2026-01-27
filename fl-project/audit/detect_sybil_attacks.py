@@ -22,6 +22,12 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("SybilDetector")
 
+# Import structured logger
+try:
+    from structured_logger import logger as structured_logger
+except ImportError:
+    structured_logger = None
+
 class SybilDetector:
     """
     Detects Sybil attacks using gradient similarity analysis
@@ -151,7 +157,7 @@ class SybilDetector:
             
             # If group has more than 1 client, it's suspicious
             if len(similar_clients) > 1:
-                detected_groups.append({
+                group = {
                     'suspected_sybils': similar_clients,
                     'group_size': len(similar_clients),
                     'average_similarity': float(np.mean([
@@ -159,7 +165,18 @@ class SybilDetector:
                         for c1 in similar_clients for c2 in similar_clients
                         if c1 != c2
                     ]) if len(similar_clients) > 1 else 0)
-                })
+                }
+                detected_groups.append(group)
+                
+                # Log sybil detection
+                if structured_logger:
+                    structured_logger.log_attack_detected(
+                        attack_type='SYBIL_ATTACK',
+                        client_id=','.join(similar_clients),
+                        confidence=group['average_similarity'],
+                        round_number=round_number,
+                        evidence={'group_size': len(similar_clients)}
+                    )
             
             used_clients.add(client_a)
         

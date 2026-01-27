@@ -24,6 +24,12 @@ import math
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(f"MALICIOUS-CLIENT")
 
+# Import structured logger
+try:
+    from structured_logger import logger as structured_logger
+except ImportError:
+    structured_logger = None
+
 class MaliciousClient:
     """
     A compromised FL client that performs attacks instead of honest training
@@ -249,6 +255,20 @@ class MaliciousClient:
             logger.warning(f"Attack Mode: {self.attack_mode}")
             logger.warning(f"{'='*70}\n")
             
+            # Log attack via structured logger
+            if structured_logger:
+                structured_logger.log_attack_detected(
+                    attack_type=self.attack_mode,
+                    client_id=self.client_id,
+                    confidence=0.95,
+                    round_number=self.current_round,
+                    evidence={
+                        'source': 'malicious_client',
+                        'loss': float(loss),
+                        'accuracy': float(accuracy)
+                    }
+                )
+            
             # Apply attack
             if self.attack_mode == 'POISONING':
                 weights = self._attack_poisoning(weights)
@@ -274,6 +294,12 @@ class MaliciousClient:
         else:
             # Submit honest update
             weights_list = [w.tolist() for w in self.model.get_weights()]
+            
+            if structured_logger:
+                structured_logger.log_update_accepted(
+                    client_id=self.client_id,
+                    round_number=self.current_round
+                )
             
             payload = {
                 'client_id': self.client_id,

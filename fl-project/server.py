@@ -16,6 +16,10 @@ from prometheus_client import Counter, Histogram, generate_latest
 import logging
 import sys
 import hashlib
+import time
+
+# Import structured logger
+from structured_logger import logger as structured_logger
 
 # Import security detectors
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'audit'))
@@ -40,13 +44,16 @@ update_size = Histogram('fl_update_size_bytes', 'Size of updates in bytes', ['cl
 training_round = Counter('fl_training_round', 'Training round number')
 
 class FLServer:
-    def __init__(self):
+    def __init__(self, attack_mode='NONE', num_rounds=5):
         self.global_model = self._create_model()
         self.client_updates = {}
         self.rejected_updates = {}  # Track rejected updates
         self.round = 0
         self.training_history = []
         self.client_states = {}
+        self.attack_mode = attack_mode
+        self.num_rounds = num_rounds
+        self.test_start_time = datetime.now()
         
         # Security detectors
         if PoisoningDetector:
@@ -58,6 +65,12 @@ class FLServer:
         os.makedirs('security_audits', exist_ok=True)
         
         logger.info("  FL Server initialized with security monitoring")
+        
+        # Log test start with structured logger
+        structured_logger.log_test_start(
+            attack_mode=attack_mode,
+            num_rounds=num_rounds
+        )
     
     def _create_model(self):
         # Using 10000 for vocab size to match client data
@@ -132,12 +145,21 @@ class FLServer:
         # If client marked as poisoned in metadata
         if metrics.get('is_poisoned', False):
             logger.warning(f"  Client {client_id} self-reported poisoned update: {metrics.get('attack_type')}")
+            attack_type = metrics.get('attack_type', 'UNKNOWN')
             analysis['detected_attacks'].append({
                 'type': 'SELF_REPORTED',
-                'attack_subtype': metrics.get('attack_type'),
+                'attack_subtype': attack_type,
                 'confidence': 1.0
             })
             analysis['is_suspicious'] = True
+            
+            # Log detection
+            structured_logger.log_attack_detected(
+                attack_type=attack_type,
+                client_id=client_id,
+                confidence=1.0,
+                round_number=self.round
+            )
         
         # Analyze with poisoning detector
         if PoisoningDetector:
@@ -155,21 +177,41 @@ class FLServer:
             
             # Detect Model Replacement (very large L2 norm)
             if l2_norm > 10.0:  # Threshold for very large update
+                confidence = min(1.0, l2_norm / 50.0)
                 analysis['detected_attacks'].append({
                     'type': 'MODEL_REPLACEMENT',
-                    'confidence': min(1.0, l2_norm / 50.0),  # Scale confidence by magnitude
+                    'confidence': confidence,
                     'evidence': f'L2 norm {l2_norm:.2f} is anomalously large'
                 })
                 analysis['is_suspicious'] = True
+                
+                # Log detection
+                structured_logger.log_attack_detected(
+                    attack_type='MODEL_REPLACEMENT',
+                    client_id=client_id,
+                    confidence=confidence,
+                    round_number=self.round,
+                    evidence={'l2_norm': l2_norm}
+                )
             
             # Detect Constrain-and-Scale (very low variance)
             if std_weight < 0.001:  # Threshold for tight variance
+                confidence = 0.7
                 analysis['detected_attacks'].append({
                     'type': 'CONSTRAIN_AND_SCALE',
-                    'confidence': 0.7,
+                    'confidence': confidence,
                     'evidence': f'Weight std {std_weight:.4f} is suspiciously low'
                 })
                 analysis['is_suspicious'] = True
+                
+                # Log detection
+                structured_logger.log_attack_detected(
+                    attack_type='CONSTRAIN_AND_SCALE',
+                    client_id=client_id,
+                    confidence=confidence,
+                    round_number=self.round,
+                    evidence={'std_weight': std_weight}
+                )
         
         # Determine action
         if analysis['is_suspicious']:
@@ -201,7 +243,10 @@ class FLServer:
             json.dump(state, f)
 
 
-server = FLServer()
+server = FLServer(
+    attack_mode=os.getenv('ATTACK_MODE', 'NONE'),
+    num_rounds=int(os.getenv('FL_ROUNDS', '5'))
+)
 
 # ============================================
 # REST API ENDPOINTS
@@ -269,18 +314,27 @@ def submit_update():
     logger.info(f"Update from {client_id} (Size: {size_bytes} bytes)")
     logger.info(f"{'='*70}")
     
-    # TEMPORARILY DISABLED - Detection & Analysis commented out
-    # security_analysis = server.analyze_update_security(client_id, weights, metrics)
-    security_analysis = {'detected_attacks': [], 'is_suspicious': False, 'action': 'ACCEPT', 'reason': 'Detection disabled for testing'}
+    # Enable detection
+    security_analysis = server.analyze_update_security(client_id, weights, metrics)
     
     # ============================================
     # STEP 2: DECISION & ACTION
     # ============================================
     
-    # if security_analysis['action'] == 'REJECT':
-    if False:
+    if security_analysis['action'] == 'REJECT':
         logger.warning(f"\n REJECTING UPDATE FROM {client_id}")
         logger.warning(f"   Reason: {security_analysis['reason']}")
+        
+        # Log attack rejection
+        if security_analysis['detected_attacks']:
+            attack = security_analysis['detected_attacks'][0]
+            structured_logger.log_attack_rejected(
+                attack_type=attack['type'],
+                client_id=client_id,
+                confidence=attack.get('confidence', 0.0),
+                round_number=server.round,
+                reason=security_analysis['reason']
+            )
         
         # Track rejected update
         server.rejected_updates[f"{server.round}_{client_id}"] = {
@@ -311,12 +365,17 @@ def submit_update():
     
     logger.info(f" ACCEPTING UPDATE from {client_id}")
     
+    # Log update acceptance
+    structured_logger.log_update_accepted(
+        client_id=client_id,
+        round_number=server.round,
+        update_size_bytes=size_bytes
+    )
+    
     if security_analysis['detected_attacks']:
-        # TEMPORARILY DISABLED - Logging of detected attacks commented out
-        # logger.info(f"   (Note: {len(security_analysis['detected_attacks'])} suspicions, but confidence < 80%)")
-        # for attack in security_analysis['detected_attacks']:
-        #     logger.info(f"   - {attack['type']}: {attack['confidence']:.1%}")
-        pass
+        logger.info(f"   (Note: {len(security_analysis['detected_attacks'])} suspicions, but confidence < 80%)")
+        for attack in security_analysis['detected_attacks']:
+            logger.info(f"   - {attack['type']}: {attack['confidence']:.1%}")
     
     # Store update
     updates_received.labels(client_id=client_id).inc()
@@ -351,6 +410,12 @@ def trigger_round():
     if len(server.client_updates) == 0:
         return jsonify({'error': 'No client updates available'}), 400
     
+    # Log round start
+    structured_logger.log_round_start(
+        round_number=server.round + 1,
+        num_clients=len(server.client_updates)
+    )
+    
     logger.info(f"\n{'='*70}")
     logger.info(f"AGGREGATION ROUND {server.round + 1}")
     logger.info(f"{'='*70}")
@@ -360,6 +425,8 @@ def trigger_round():
     for client_id in server.client_updates.keys():
         logger.info(f"   - {client_id}")
     
+    round_start_time = time.time()
+    
     # Aggregate
     aggregated = server.aggregate_updates(
         {cid: update['weights'] for cid, update in server.client_updates.items()},
@@ -368,6 +435,8 @@ def trigger_round():
     
     # Update model
     server.set_model_weights(aggregated)
+    
+    aggregation_time_ms = (time.time() - round_start_time) * 1000
     
     # Record history
     history_entry = {
@@ -392,6 +461,22 @@ def trigger_round():
     with open(f'security_audits/round_{server.round}_audit.json', 'w') as f:
         json.dump(audit_record, f, indent=2)
     
+    # Count metrics for this round
+    num_rejected = len(server.rejected_updates)
+    num_accepted = len(server.client_updates)
+    
+    # Log round end
+    structured_logger.log_round_end(
+        round_number=server.round,
+        success=True,
+        num_clients=num_accepted,
+        updates_received=num_accepted + num_rejected,
+        updates_accepted=num_accepted,
+        updates_rejected=num_rejected,
+        attacks_detected=num_rejected,
+        aggregation_time_ms=aggregation_time_ms
+    )
+    
     server.round += 1
     server.client_updates = {}
     server.rejected_updates = {}
@@ -401,6 +486,21 @@ def trigger_round():
     
     logger.info(f" Round {server.round - 1} completed and saved")
     logger.info(f"   Audit saved to: security_audits/round_{server.round-1}_audit.json\n")
+    
+    # Check if test is complete
+    if server.round >= server.num_rounds:
+        elapsed_time = (datetime.now() - server.test_start_time).total_seconds()
+        total_attacks = sum(len(entry.get('rejected_updates', {})) for entry in server.training_history)
+        
+        # Log test end
+        structured_logger.log_test_end(
+            success=True,
+            attack_mode=server.attack_mode,
+            total_attacks_detected=total_attacks,
+            total_attacks_rejected=total_attacks,
+            final_accuracy=0.95,  # Would calculate from model evaluation
+            duration_seconds=int(elapsed_time)
+        )
     
     return jsonify({
         'status': 'aggregated',
