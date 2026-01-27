@@ -67,158 +67,108 @@ python control.py --mode monitor --interval 5
 
 ## How the System Works
 
-### Training Cycle Flow
+1. Runs federated learning cycles with benign and malicious clients
+2. Detects attacks in real-time via the FL server
+3. Collects logs (Loki) and metrics (Prometheus)
+4. Visualizes data in Grafana dashboards
+5. Generates security audit reports
 
+### **Step 1: Jenkins Pipeline Triggers (Jenkinsfile)**
 ```
-Client 1 & 2 (running continuously):
-  1. FETCH: Download global model from server (round N)
-  2. TRAIN: Train locally for 2 epochs on local data
-  3. SUBMIT: Send updated weights to server
-  4. WAIT: Sleep 5s, then repeat
-
-Server (initially waiting):
-  Receives updates from clients asynchronously
-  Stores them indexed by client_id
-
-Controller (you trigger):
-  1. Monitors pending updates via /status
-  2. When ready, calls /trigger_round
-  3. Server aggregates all updates (federated averaging)
-  4. Increments round number
-  5. Clients fetch new model and cycle continues
+User/Scheduler → Jenkins triggers with parameters:
+├── ATTACK_MODE: Choose which attack to test (POISONING, STEALTHY, etc.)
+├── FL_ROUNDS: Number of federated learning training rounds
+├── FL_WAIT: Time between rounds (allows convergence)
+└── RUN_SECURITY_AUDIT: Enable/disable security analysis
 ```
 
-### Example Timeline
-
+### **Step 2: Code Quality & Build Stage**
 ```
-T=0s   | Client 1 & 2 start fetching model (round 0)
-T=2s   | Both clients finish training locally
-T=3s   | Both clients submit updates to server
-T=5s   | (Manual) python control.py --mode trigger
-T=5s   | Server aggregates 2 updates → new model (round 1)
-T=6s   | Clients fetch new model (round 1)
-T=8s   | Training completes again
-T=9s   | Submit updates
-T=13s  | (Manual) trigger round 2
-...
+1. Code scanning (Bandit, Semgrep) for vulnerabilities
+2. Docker images built ONCE (reused for all attacks)
+3. Containers spun up: FL server + honest clients + malicious client
 ```
 
----
-
-## Monitoring & Observability
-
-### 1. **Real-time Logs**
-
-```bash
-# All logs
-docker-compose logs -f
-
-# Specific container
-docker-compose logs -f fl_server
-docker-compose logs -f fl_client_1
+### **Step 3: Data Preparation**
+```
+fetch_and_split.py runs:
+- Downloads/generates training data (MNIST, CIFAR, etc.)
+- Splits into client_1_data.json, malicious_client_data.json
+- Stored in ./data/ volume (shared across containers)
 ```
 
-### 2. **Status Endpoint** (JSON)
-
-```bash
-curl http://localhost:5000/status | jq
-
-# Response includes:
-# - current round number
-# - client states (samples, last update, metrics)
-# - pending updates waiting for aggregation
-# - recent training history
+### **Step 4: Attack Scenario Execution**
+```
+Control flow (control.py runs inside fl_server container):
+├── Round N:
+│   ├── Malicious client submits poisoned gradients
+│   ├── Honest clients submit clean gradients
+│   ├── Server aggregates all updates
+│   ├── Server runs security analysis:
+│   │   ├── Gradient anomaly detection
+│   │   ├── Poisoning detection
+│   │   ├── Byzantine detection
+│   │   └── Sybil detection
+│   ├── Malicious updates REJECTED
+│   ├── Aggregation updated with only honest updates
+│   ├── Results logged to security_audits/round_N.json
+│   └── Audit logs sent to Loki
+└── Repeat for next round
 ```
 
-### 3. **Prometheus Metrics**
+### **Step 5: Logging Pipeline (Loki)**
+```
+All containers configured with loki logging driver:
 
-Access metrics at: http://localhost:9090
+Container logs:
+fl_server        ──┐
+fl_client_1      ──┼──→ Loki (3100) ──→ Stored as time-series labeled data
+fl_malicious     ──┤    └─ Job labels by container
+fl_prometheus    ──┘
+fl_grafana
 
-Key metrics:
-- `fl_updates_received_total` - Count per client
-- `fl_update_size_bytes` - Update payload sizes
-- `fl_training_round_total` - Total aggregations done
-
-### 4. **Control.py Monitoring Modes**
-
-```bash
-# Status snapshot
-python control.py --mode status
-
-# Live monitoring (updates every 10s)
-python control.py --mode monitor --interval 10
-
-# Automated training (waits for clients, triggers round)
-python control.py --mode train --rounds 10 --wait 20
+Loki stores:
+- Container ID, job name (fl_server, fl_client)
+- Full log text with timestamps
+- Allows querying like: {job="fl_server"} | json | level="ERROR"
 ```
 
----
-
-## Data Flow Monitoring
-
-### Inspecting What's Sent
-
-The server logs include:
-
+### **Step 6: Metrics Collection (Prometheus)**
 ```
-[Server] Update from client_1: loss=0.2341, accuracy=0.8923, size=4256314 bytes
-[Server] Update from client_2: loss=0.1892, accuracy=0.9145, size=4256314 bytes
-```
+Prometheus (9091) scrapes from FL server's /metrics endpoint every 15 seconds:
 
-### What Gets Sent
+Server exposes:
+├── fl_training_rounds (counter) - Total rounds completed
+├── fl_model_accuracy (gauge) - Current model accuracy
+├── fl_poisoned_updates_detected (counter) - Attacks detected
+├── fl_cpu_usage (gauge)
+├── fl_memory_usage (gauge)
+└── Request latency metrics
 
-Each update contains:
-- **Weights**: LSTM model parameters (embedding, LSTM, dense layers)
-- **Metrics**: Local loss, accuracy
-- **Metadata**: Client ID, timestamp
-
-Size: ~4-5 MB per client (serialized neural network weights)
-
-### Aggregation Process
-
-```python
-# Server-side federated averaging:
-aggregated = (client_1_weights + client_2_weights) / 2
-# Sets global model to average
-# Next round, clients fetch this averaged model
+Stored in: /prometheus volume (TSDB - Time Series Database)
 ```
 
----
-
-## Triggering Training Cycles
-
-### Method 1: Automated (Recommended for Testing)
-
-```bash
-python control.py --mode train --rounds 5 --wait 15
+### **Step 7: Grafana Visualization**
+```
+Grafana (3000) connects to:
+├── Prometheus data source
+│   └── Queries metrics from Prometheus TSDB
+│   └── Creates graphs: Accuracy over time, Attack detection rate
+│
+└── Loki data source
+    └── Queries logs with labels
+    └── Shows audit trails, error messages with timestamps
 ```
 
-- Waits 15s for clients to train and submit
-- Automatically triggers aggregation
-- Repeats 5 times
-- Best for demos and testing
-
-### Method 2: Manual Control
-
-```bash
-# Terminal 1: Check what's pending
-python control.py --mode status
-
-# Terminal 2: When ready to aggregate
-python control.py --mode trigger
-
-# Repeat
+### **Step 8: Security Analysis & Reporting**
+```
+After all rounds complete:
+1. Python script reads all security_audits/*.json files
+2. Aggregates:
+   ├── Total attacks detected & rejected
+   ├── Per-client statistics (accepted/rejected)
+   └── Attack type distribution
+3. Generates HTML report (Jenkins publishHTML)
+4. Archives as Jenkins artifacts
 ```
 
-### Method 3: API Calls
-
-```bash
-# Trigger aggregation directly
-curl -X POST http://localhost:5000/trigger_round
-
-# Get current status
-curl http://localhost:5000/status | jq
-
-# Get metrics
-curl http://localhost:5000/metrics
-```
