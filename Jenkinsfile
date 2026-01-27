@@ -164,7 +164,7 @@ pipeline {
                         mkdir -p security_analysis_reports
                         
                         # Analyze audit trails
-                        python << 'PYTHON_SCRIPT'
+                        python3 << 'PYTHON_SCRIPT'
 import json
 import os
 from pathlib import Path
