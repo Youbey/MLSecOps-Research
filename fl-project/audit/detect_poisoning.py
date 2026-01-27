@@ -30,46 +30,42 @@ class PoisoningDetector:
         self.update_history = {}  # client_id -> list of metrics
         self.suspicion_scores = {}  # client_id -> scores
         
-    def analyze_update(self, client_id: str, weights: List, previous_weights: List = None) -> Dict:
-        """
-        Analyze a single client update for poisoning characteristics
-        
-        Returns metrics:
-        - l2_norm: L2 norm of weight change
-        - cosine_similarity: Direction similarity to expected update
-        - magnitude_change: Relative change from previous
-        - anomaly_score: Composite anomaly score
-        """
-        weights = np.array(weights, dtype=np.float32)
-        
-        metrics = {
-            'client_id': client_id,
-            'timestamp': datetime.now().isoformat(),
-            'l2_norm': float(np.linalg.norm(weights)),
-            'max_weight': float(np.max(np.abs(weights))),
-            'mean_abs_weight': float(np.mean(np.abs(weights))),
-            'std_weight': float(np.std(weights)),
-        }
-        
-        # Compare with previous update if available
-        if previous_weights is not None:
-            prev_weights = np.array(previous_weights, dtype=np.float32)
-            delta = weights - prev_weights
-            metrics['weight_delta_norm'] = float(np.linalg.norm(delta))
-            metrics['delta_ratio'] = float(metrics['weight_delta_norm'] / (metrics['l2_norm'] + 1e-10))
-        
-        # Store in history
-        if client_id not in self.update_history:
-            self.update_history[client_id] = []
-        
-        self.update_history[client_id].append(metrics)
-        
-        # Keep only recent history
-        if len(self.update_history[client_id]) > self.history_window:
-            self.update_history[client_id].pop(0)
-        
-        return metrics
-    
+    def analyze_update(self, client_id: str, weights: list, previous_weights: list = None) -> dict:
+            """
+            Analyze a single client update for poisoning characteristics.
+            Compatible with multi-layer LSTM models.
+            """
+            # FIX: Flatten the list of inhomogeneous weight tensors into one flat array
+            flat_weights = np.concatenate([np.array(w).flatten() for w in weights]).astype(np.float32)
+            
+            metrics = {
+                'client_id': client_id,
+                'timestamp': datetime.now().isoformat(),
+                'l2_norm': float(np.linalg.norm(flat_weights)),
+                'max_weight': float(np.max(np.abs(flat_weights))),
+                'mean_abs_weight': float(np.mean(np.abs(flat_weights))),
+                'std_weight': float(np.std(flat_weights)),
+            }
+            
+            # Compare with previous update if available
+            if previous_weights is not None:
+                # FIX: Flatten previous weights as well
+                flat_prev = np.concatenate([np.array(w).flatten() for w in previous_weights]).astype(np.float32)
+                delta = flat_weights - flat_prev
+                metrics['weight_delta_norm'] = float(np.linalg.norm(delta))
+                metrics['delta_ratio'] = float(metrics['weight_delta_norm'] / (metrics['l2_norm'] + 1e-10))
+            
+            # Store in history
+            if client_id not in self.update_history:
+                self.update_history[client_id] = []
+            
+            self.update_history[client_id].append(metrics)
+            
+            # Keep only recent history
+            if len(self.update_history[client_id]) > self.history_window:
+                self.update_history[client_id].pop(0)
+            
+            return metrics
     def detect_anomalies(self, all_client_metrics: Dict[str, Dict]) -> Dict:
         """
         Detect anomalous clients using statistical methods
