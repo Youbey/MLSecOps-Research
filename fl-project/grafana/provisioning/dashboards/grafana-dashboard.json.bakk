@@ -3,9 +3,7 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": {
-          "uid": "-- Grafana --"
-        },
+        "datasource": "-- Grafana --",
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -15,33 +13,26 @@
     ]
   },
   "editable": true,
-  "fiscalYearStartMonth": 0,
+  "gnetId": null,
   "graphTooltip": 0,
-  "id": 2,
+  "id": null,
   "links": [],
   "panels": [
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "fixedColor": "yellow",
-            "mode": "shades"
+            "mode": "palette-classic"
           },
+          "custom": {},
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
+                "value": null
               }
             ]
           }
@@ -54,71 +45,14 @@
         "x": 0,
         "y": 0
       },
-      "id": 10,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "12.3.1",
-      "targets": [
-        {
-          "editorMode": "builder",
-          "expr": "sast_bandit_high_severity",
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Critical Vulnerabilities (Bandit)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
       "id": 2,
       "options": {
-        "dedupStrategy": "none",
-        "enableInfiniteScrolling": false,
-        "enableLogDetails": true,
-        "showControls": false,
         "showLegend": true,
-        "showTime": false,
-        "showValue": "auto",
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
+        "showValue": "auto"
       },
-      "pluginVersion": "12.3.1",
+      "pluginVersion": "7.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
           "expr": "{job=\"fl_server\"} | json | event_type=~\"TEST_START|ROUND_START|ROUND_END|TEST_END|ATTACK_DETECTED|ATTACK_REJECTED\"",
           "refId": "A"
         }
@@ -127,10 +61,7 @@
       "type": "logs"
     },
     {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -138,13 +69,7 @@
           },
           "custom": {
             "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "footer": {
-              "reducers": []
-            },
-            "inspect": false
+            "displayMode": "auto"
           },
           "mappings": [],
           "thresholds": {
@@ -152,7 +77,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": 0
+                "value": null
               },
               {
                 "color": "red",
@@ -171,16 +96,11 @@
       },
       "id": 3,
       "options": {
-        "cellHeight": "sm",
         "showHeader": true
       },
-      "pluginVersion": "12.3.1",
+      "pluginVersion": "7.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
           "expr": "{job=\"fl_server\"} | json | event_type=\"ATTACK_DETECTED\"",
           "refId": "A"
         }
@@ -193,11 +113,11 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
+              "timestamp": "Time",
               "attack_type": "Attack Type",
               "client_id": "Client",
               "confidence": "Confidence",
-              "level": "Level",
-              "timestamp": "Time"
+              "level": "Level"
             }
           }
         }
@@ -205,23 +125,23 @@
       "type": "table"
     },
     {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
-          "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            }
-          },
-          "mappings": []
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -236,8 +156,7 @@
         "legend": {
           "calcs": [],
           "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+          "placement": "bottom"
         },
         "pieType": "pie",
         "reduceOptions": {
@@ -247,20 +166,13 @@
           "fields": "",
           "values": false
         },
-        "sort": "desc",
         "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+          "mode": "single"
         }
       },
-      "pluginVersion": "12.3.1",
+      "pluginVersion": "8.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
           "expr": "{job=\"fl_server\"} | json | event_type=\"ATTACK_DETECTED\" | attack_type",
           "refId": "A"
         }
@@ -269,10 +181,7 @@
       "type": "piechart"
     },
     {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -285,7 +194,16 @@
               "viz": false
             }
           },
-          "mappings": []
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -300,8 +218,7 @@
         "legend": {
           "calcs": [],
           "displayMode": "list",
-          "placement": "right",
-          "showLegend": true
+          "placement": "right"
         },
         "pieType": "pie",
         "reduceOptions": {
@@ -311,20 +228,13 @@
           "fields": "",
           "values": false
         },
-        "sort": "desc",
         "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+          "mode": "single"
         }
       },
-      "pluginVersion": "12.3.1",
+      "pluginVersion": "8.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
           "expr": "{job=\"fl_server\"} | json | event_type=\"ATTACK_DETECTED\" | level",
           "refId": "A"
         }
@@ -333,10 +243,7 @@
       "type": "piechart"
     },
     {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -344,13 +251,7 @@
           },
           "custom": {
             "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "footer": {
-              "reducers": []
-            },
-            "inspect": false
+            "displayMode": "auto"
           },
           "mappings": [],
           "thresholds": {
@@ -358,7 +259,7 @@
             "steps": [
               {
                 "color": "green",
-                "value": 0
+                "value": null
               }
             ]
           }
@@ -373,16 +274,11 @@
       },
       "id": 6,
       "options": {
-        "cellHeight": "sm",
         "showHeader": true
       },
-      "pluginVersion": "12.3.1",
+      "pluginVersion": "7.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
           "expr": "{job=\"fl_server\"} | json | event_type=\"ROUND_END\"",
           "refId": "A"
         }
@@ -395,9 +291,9 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
-              "metrics": "Metrics",
+              "timestamp": "Time",
               "round_number": "Round",
-              "timestamp": "Time"
+              "metrics": "Metrics"
             }
           }
         }
@@ -405,10 +301,7 @@
       "type": "table"
     },
     {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
+      "datasource": "Loki",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -416,13 +309,7 @@
           },
           "custom": {
             "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "footer": {
-              "reducers": []
-            },
-            "inspect": false
+            "displayMode": "auto"
           },
           "mappings": [],
           "thresholds": {
@@ -430,7 +317,7 @@
             "steps": [
               {
                 "color": "red",
-                "value": 0
+                "value": null
               },
               {
                 "color": "green",
@@ -449,16 +336,11 @@
       },
       "id": 7,
       "options": {
-        "cellHeight": "sm",
         "showHeader": true
       },
-      "pluginVersion": "12.3.1",
+      "pluginVersion": "7.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
           "expr": "{job=\"fl_server\"} | json | event_type=\"TEST_END\"",
           "refId": "A"
         }
@@ -471,10 +353,10 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
+              "timestamp": "Time",
               "attack_mode": "Attack Mode",
-              "final_accuracy": "Accuracy",
               "success": "Status",
-              "timestamp": "Time"
+              "final_accuracy": "Accuracy"
             }
           }
         }
@@ -482,12 +364,24 @@
       "type": "table"
     },
     {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
+      "datasource": "Loki",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
       "gridPos": {
@@ -498,23 +392,12 @@
       },
       "id": 8,
       "options": {
-        "dedupStrategy": "none",
-        "enableInfiniteScrolling": false,
-        "enableLogDetails": true,
-        "showControls": false,
         "showLegend": true,
-        "showTime": false,
-        "showValue": "auto",
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
+        "showValue": "auto"
       },
-      "pluginVersion": "12.3.1",
+      "pluginVersion": "7.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
           "expr": "{job=\"fl_server\"} | json | event_type=~\"UPDATE_ACCEPTED|ATTACK_REJECTED\"",
           "refId": "A"
         }
@@ -523,12 +406,24 @@
       "type": "logs"
     },
     {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
+      "datasource": "Loki",
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
         "overrides": []
       },
       "gridPos": {
@@ -539,23 +434,12 @@
       },
       "id": 9,
       "options": {
-        "dedupStrategy": "none",
-        "enableInfiniteScrolling": false,
-        "enableLogDetails": true,
-        "showControls": false,
         "showLegend": true,
-        "showTime": false,
-        "showValue": "auto",
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
+        "showValue": "auto"
       },
-      "pluginVersion": "12.3.1",
+      "pluginVersion": "7.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
           "expr": "{job=\"fl_server\"} | json | event_type=\"ATTACK_DETECTED\" | confidence > 0.8",
           "refId": "A"
         }
@@ -564,9 +448,9 @@
       "type": "logs"
     }
   ],
-  "preload": false,
   "refresh": "5s",
-  "schemaVersion": 42,
+  "schemaVersion": 27,
+  "style": "dark",
   "tags": [
     "fl-security",
     "attacks",
@@ -583,5 +467,5 @@
   "timezone": "",
   "title": "FL Security Testing - Real-Time Monitoring",
   "uid": "fl-security-dashboard",
-  "version": 2
+  "version": 0
 }
