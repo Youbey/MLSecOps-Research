@@ -72,13 +72,6 @@ pipeline {
                             semgrep scan --config=/src/quality_assurance/semgrep-rules.yaml \
                             --json -o semgrep-report.json --metrics=off
                         '''
-
-                        sh '''
-                        python3 -m venv venv-tools
-                        . venv-tools/bin/activate
-                        pip install requests
-                        python3 quality_assurance/export_metrics.py
-                        '''
                     }
                 }
             }
@@ -442,7 +435,7 @@ PYTHON_SCRIPT
                         pip install requests
 
                         # Run the exporter script
-                        python3 export_metrics.py
+                        python3 quality_assurance/export_metrics.py
                     '''
                 }
             }
