@@ -59,10 +59,21 @@ pipeline {
             steps {
                 echo '========== STAGE: Code Quality =========='
                 sh '''
-                    pip install bandit semgrep pylint -q
-                    bandit -r . -f json -o bandit-report.json || true
-                    semgrep --config=p/security-audit . --json -o semgrep-report.json || true
-                    echo " Code quality checks completed"
+                    # Create venv just for the tools
+                    python3 -m venv venv-tools
+                    . venv-tools/bin/activate
+                    pip install bandit semgrep requests
+
+                    echo "--- Running Bandit ---"
+                    # -c: config, -r: recursive, -ll: medium/high severity only
+                    bandit -c bandit.yaml -r . -f json -o bandit-report.json --exit-zero
+
+                    echo "--- Running Semgrep ---"
+                    # --exclude: IMPORTANT to ignore venv noise
+                    semgrep --config=semgrep-rules.yaml --exclude=venv --exclude=venv-tools . --json -o semgrep-report.json || true
+
+                    echo "--- Exporting Metrics ---"
+                    python3 export_metrics.py
                 '''
             }
             post {
@@ -410,6 +421,24 @@ PYTHON_SCRIPT
                     echo "   Server: http://localhost:5000"
                     echo "   Security Status: curl http://localhost:5000/security/status"
                 '''
+            }
+        }
+
+        // Push reports (bandit, semgrep, pylint..) to graphana
+        stage(' Publish Metrics to Grafana') {
+            steps {
+                echo '========== STAGE: Publish Metrics =========='
+                dir('fl-project') {
+                    sh '''
+                        # Ensure we are in the same environment or reinstall requests
+                        python3 -m venv venv
+                        . venv/bin/activate
+                        pip install requests
+
+                        # Run the exporter script
+                        python3 export_metrics.py
+                    '''
+                }
             }
         }
     }

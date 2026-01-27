@@ -155,6 +155,15 @@ services:
         loki-url: "http://localhost:3100/loki/api/v1/push"
         loki-batch-size: "400"
 
+  # PushGateway to push the metrics to a holding area (sast reports to graphana)
+  pushgateway:
+    image: prom/pushgateway
+    container_name: fl_pushgateway
+    ports:
+      - "9091:9091"
+    networks:
+      - fl_network
+
 volumes:
   server_state:
   client_1_cache:
