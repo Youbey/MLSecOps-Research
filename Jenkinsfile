@@ -57,7 +57,7 @@ pipeline {
         
         stage(' Code Quality') {
             steps {
-                echo '========== STAGE: Code Quality (Dockerized) =========='
+                echo '========== STAGE: Code Quality =========='
                 dir('fl-project') {
                     script {
                         sh '''
@@ -430,7 +430,7 @@ PYTHON_SCRIPT
             }
         }
 
-        // Push reports (bandit, semgrep, pylint..) to graphana
+        // Push reports (bandit, semgrep, pylint..) to grafana
         stage(' Publish Metrics to Grafana') {
             steps {
                 echo '========== STAGE: Publish Metrics =========='

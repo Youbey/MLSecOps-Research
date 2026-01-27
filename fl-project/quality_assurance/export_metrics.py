@@ -5,7 +5,7 @@ import requests
 from datetime import datetime
 
 # Config
-PUSHGATEWAY_URL = "http://localhost:9091/metrics/job/jenkins_pipeline"
+PUSHGATEWAY_URL = "http://localhost:9092/metrics/job/jenkins_pipeline"
 
 def push_metric(name, value, help_text):
     data = f"# HELP {name} {help_text}\n# TYPE {name} gauge\n{name} {value}\n"
