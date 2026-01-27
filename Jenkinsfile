@@ -353,7 +353,7 @@ PYTHON_SCRIPT
             post {
                 always {
                     publishHTML([
-                        reportDir: 'security_analysis_reports',
+                        reportDir: 'fl-project/security_analysis_reports',
                         reportFiles: 'report.html',
                         reportName: "Security Report - ${params.ATTACK_MODE}"
                     ])
@@ -372,11 +372,11 @@ PYTHON_SCRIPT
                     curl -s http://localhost:5000/metrics > performance_reports/prometheus-metrics.txt || true
                     
                     # Collect server status
-                    curl -s http://localhost:5000/status | jq . > performance_reports/server-status.json || true
-                    
+                    curl -s http://localhost:5000/status | python3 -m json.tool > performance_reports/server-status.json || echo "{}" > performance_reports/server-status.json
+
                     # Collect security status
-                    curl -s http://localhost:5000/security/status | jq . > performance_reports/security-status.json || true
-                    
+                    curl -s http://localhost:5000/security/status | python3 -m json.tool > performance_reports/security-status.json || echo "{}" > performance_reports/security-status.json
+                                        
                     echo " Metrics collected"
                     '''
                 }   
