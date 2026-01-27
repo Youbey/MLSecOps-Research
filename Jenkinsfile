@@ -58,27 +58,30 @@ pipeline {
         stage(' Code Quality') {
             steps {
                 echo '========== STAGE: Code Quality =========='
-                sh '''
-                    # Create venv just for the tools
-                    python3 -m venv venv-tools
-                    . venv-tools/bin/activate
-                    pip install bandit semgrep requests
+                dir('fl-project') {
+                    sh '''
+                        echo "--- Setting up Environment ---"
+                        python3 -m venv venv-tools
+                        . venv-tools/bin/activate
+                        pip install bandit semgrep requests
 
-                    echo "--- Running Bandit ---"
-                    # -c: config, -r: recursive, -ll: medium/high severity only
-                    bandit -c bandit.yaml -r . -f json -o bandit-report.json --exit-zero
+                        echo "--- Running Bandit ---"
+                        # Now bandit.yaml is found because we are in fl-project/
+                        bandit -c bandit.yaml -r . -f json -o bandit-report.json --exit-zero
 
-                    echo "--- Running Semgrep ---"
-                    # --exclude: IMPORTANT to ignore venv noise
-                    semgrep --config=semgrep-rules.yaml --exclude=venv --exclude=venv-tools . --json -o semgrep-report.json || true
+                        echo "--- Running Semgrep ---"
+                        # We exclude the tool's own venv to avoid noise
+                        semgrep --config=semgrep-rules.yaml --exclude=venv-tools . --json -o semgrep-report.json || true
 
-                    echo "--- Exporting Metrics ---"
-                    python3 export_metrics.py
-                '''
+                        echo "--- Exporting Metrics ---"
+                        python3 export_metrics.py
+                    '''
+                }
             }
             post {
                 always {
-                    archiveArtifacts artifacts: '*-report.json', allowEmptyArchive: true
+                    // FIX: Path is now relative to workspace root, so we add fl-project/ prefix
+                    archiveArtifacts artifacts: 'fl-project/*-report.json', allowEmptyArchive: true
                 }
             }
         }
