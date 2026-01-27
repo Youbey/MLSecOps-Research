@@ -56,36 +56,38 @@ pipeline {
         }
         
         stage(' Code Quality') {
-                    steps {
-                        echo '========== STAGE: Code Quality =========='
-                        dir('fl-project') {
-                            sh '''
-                                echo "--- Setting up Environment ---"
-                                python3 -m venv venv-tools
-                                . venv-tools/bin/activate
-                                pip install bandit semgrep requests
+            steps {
+                echo '========== STAGE: Code Quality (Dockerized) =========='
+                dir('fl-project') {
+                    script {
+                        sh '''
+                        docker run --rm -v $(pwd):/code --user $(id -u):$(id -g) python:3.10-slim sh -c "
+                            pip install bandit -q &&
+                            bandit -c /code/quality_assurance/bandit.yml -r /code -f json -o /code/bandit-report.json --exit-zero
+                        "
+                        '''
 
-                                echo "--- Running Bandit ---"
-                                # FIX: Point to quality_assurance folder
-                                # Note: You named it 'bandit.yml' (yml not yaml) in your file tree
-                                bandit -c quality_assurance/bandit.yml -r . -f json -o bandit-report.json --exit-zero
+                        sh '''
+                        docker run --rm -v $(pwd):/src --user $(id -u):$(id -g) returntocorp/semgrep \
+                            semgrep scan --config=/src/quality_assurance/semgrep-rules.yaml \
+                            --json -o semgrep-report.json --metrics=off
+                        '''
 
-                                echo "--- Running Semgrep ---"
-                                # FIX: Point to quality_assurance folder
-                                semgrep --config=quality_assurance/semgrep-rules.yaml --exclude=venv-tools . --json -o semgrep-report.json || true
-
-                                echo "--- Exporting Metrics ---"
-                                # FIX: Run script from quality_assurance folder
-                                python3 quality_assurance/export_metrics.py
-                            '''
-                        }
-                    }
-                    post {
-                        always {
-                            archiveArtifacts artifacts: 'fl-project/*-report.json', allowEmptyArchive: true
-                        }
+                        sh '''
+                        python3 -m venv venv-tools
+                        . venv-tools/bin/activate
+                        pip install requests
+                        python3 quality_assurance/export_metrics.py
+                        '''
                     }
                 }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'fl-project/*-report.json', allowEmptyArchive: true
+                }
+            }
+        }
         
         stage(' Build (Single Time)') {
             steps {
