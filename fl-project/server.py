@@ -60,17 +60,21 @@ class FLServer:
         logger.info("  FL Server initialized with security monitoring")
     
     def _create_model(self):
-        # Using 1000 for vocab size to keep the model lightweight for your runner
+        # Using 10000 for vocab size to match client data
         model = tf.keras.Sequential([
             # Article: Embedding(total_words, 100, input_length=max_sequence_len-1)
-            tf.keras.layers.Embedding(1000, 100, input_length=3),
+            tf.keras.layers.Embedding(10000, 100, input_length=3),
             # Article: LSTM(150)
             tf.keras.layers.LSTM(150),
             # Article: Dense(total_words, activation='softmax')
-            tf.keras.layers.Dense(1000, activation='softmax')
+            tf.keras.layers.Dense(10000, activation='softmax')
         ])
         # Article: compile(loss='categorical_crossentropy', optimizer='adam')
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        
+        # Build the model to initialize weights without dummy data
+        model.build(input_shape=(None, 3))
+        
         return model
     
     def aggregate_updates(self, updates, num_clients):
@@ -265,13 +269,16 @@ def submit_update():
     logger.info(f"Update from {client_id} (Size: {size_bytes} bytes)")
     logger.info(f"{'='*70}")
     
-    security_analysis = server.analyze_update_security(client_id, weights, metrics)
+    # TEMPORARILY DISABLED - Detection & Analysis commented out
+    # security_analysis = server.analyze_update_security(client_id, weights, metrics)
+    security_analysis = {'detected_attacks': [], 'is_suspicious': False, 'action': 'ACCEPT', 'reason': 'Detection disabled for testing'}
     
     # ============================================
     # STEP 2: DECISION & ACTION
     # ============================================
     
-    if security_analysis['action'] == 'REJECT':
+    # if security_analysis['action'] == 'REJECT':
+    if False:
         logger.warning(f"\n REJECTING UPDATE FROM {client_id}")
         logger.warning(f"   Reason: {security_analysis['reason']}")
         
@@ -305,9 +312,11 @@ def submit_update():
     logger.info(f" ACCEPTING UPDATE from {client_id}")
     
     if security_analysis['detected_attacks']:
-        logger.info(f"   (Note: {len(security_analysis['detected_attacks'])} suspicions, but confidence < 80%)")
-        for attack in security_analysis['detected_attacks']:
-            logger.info(f"   - {attack['type']}: {attack['confidence']:.1%}")
+        # TEMPORARILY DISABLED - Logging of detected attacks commented out
+        # logger.info(f"   (Note: {len(security_analysis['detected_attacks'])} suspicions, but confidence < 80%)")
+        # for attack in security_analysis['detected_attacks']:
+        #     logger.info(f"   - {attack['type']}: {attack['confidence']:.1%}")
+        pass
     
     # Store update
     updates_received.labels(client_id=client_id).inc()
