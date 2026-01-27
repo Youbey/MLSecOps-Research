@@ -60,23 +60,23 @@ class MaliciousClient:
         self._register_with_server()
     
     def _create_model(self):
-        # Using 1000 for vocab size to keep the model lightweight for your runner
+        # Match server's vocab size of 10000
         model = tf.keras.Sequential([
-            # Article: Embedding(total_words, 100, input_length=max_sequence_len-1)
-            tf.keras.layers.Embedding(1000, 100, input_length=3),
-            # Article: LSTM(150)
+            tf.keras.layers.Embedding(10000, 100, input_length=3),
             tf.keras.layers.LSTM(150),
-            # Article: Dense(total_words, activation='softmax')
-            tf.keras.layers.Dense(1000, activation='softmax')
+            tf.keras.layers.Dense(10000, activation='softmax')
         ])
-        # Article: compile(loss='categorical_crossentropy', optimizer='adam')
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        
+        # Build the model to initialize weights without dummy data
+        model.build(input_shape=(None, 3))
+        
         return model
     
     def _load_data(self, data_file):
         """Load training data from file (Compatible with Medium Article N-Grams)"""
         with open(data_file, 'r') as f:
-            data = json.json.load(f)
+            data = json.load(f)
         
         # The data is now a list of sequences [word1, word2, word3, target]
         data_array = np.array(data)
@@ -358,15 +358,11 @@ def main():
         attack_rounds=[2, 3, 4, 5]  # Attack in rounds 2-5
     )
     
-    # Run continuous training cycles
-    cycle = 0
-    while True:
-        cycle += 1
-        logger.info(f"\n>>> Cycle {cycle}")
-        client.run_training_cycle()
-        
-        # Wait before next cycle
-        time.sleep(5)
+    # Run single training cycle (not continuous)
+    cycle = 1
+    logger.info(f"\n>>> Cycle {cycle}")
+    client.run_training_cycle()
+    logger.info(f" Training complete. Client exiting.")
 
 
 if __name__ == '__main__':
