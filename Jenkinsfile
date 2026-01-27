@@ -223,7 +223,7 @@ PYTHON_SCRIPT
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'security_analysis_reports/**'
+                    archiveArtifacts artifacts: 'security_analysis_reports/**', allowEmptyArchive: true
                 }
             }
         }
