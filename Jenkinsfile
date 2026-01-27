@@ -383,7 +383,7 @@ PYTHON_SCRIPT
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'performance_reports/**'
+                    archiveArtifacts artifacts: 'fl-project/performance_reports/**', allowEmptyArchive: true
                 }
             }
         }
