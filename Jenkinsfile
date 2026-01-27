@@ -236,7 +236,7 @@ PYTHON_SCRIPT
                 echo '========== STAGE: Report Generation =========='
                 dir('fl-project') {
                 sh '''
-                    python << 'PYTHON_SCRIPT'
+                    python3 << 'PYTHON_SCRIPT'
 import json
 from datetime import datetime
 
@@ -459,7 +459,7 @@ def runAttackScenario(String attackMode) {
             sleep 5
             
             # FIXED: Run control.py INSIDE the server container
-            docker exec fl_server python control.py --mode train \\
+            docker exec fl_server python3 control.py --mode train \\
                 --rounds ${FL_ROUNDS} \\
                 --wait ${FL_WAIT}
             
