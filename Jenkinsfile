@@ -490,19 +490,16 @@ def runAttackScenario(String attackMode) {
         sh '''
             set -e
             
-            # Update attack mode in docker-compose.yml
-            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/\" docker-compose.yml
-            
-            # Restart the malicious client to apply the new mode
+            # FIX: Point to the new APP compose file
+            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" docker-compose-app.yml
+
+            # FIX: Point to the new APP compose file
             docker compose -f docker-compose-app.yml up -d --no-deps --build malicious_client
-            
-            # Wait for client to check in
+
             sleep 5
-            
-            # FIXED: Run control.py INSIDE the server container
-            docker exec fl_server python3 control.py --mode train \\
-                --rounds ${FL_ROUNDS} \\
-                --wait ${FL_WAIT}
+
+            # This remains the same
+            docker exec fl_server python3 control.py --mode train --rounds ${FL_ROUNDS} --wait ${FL_WAIT}
             
             echo " Attack scenario ''' + attackMode + ''' completed"
         '''
