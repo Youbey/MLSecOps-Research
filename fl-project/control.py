@@ -105,7 +105,7 @@ class FLController:
         except KeyboardInterrupt:
             print("\nMonitoring stopped")
     
-    def automated_training(self, num_rounds=5, wait_for_updates=15):
+    def automated_training(self, num_rounds=5, wait_for_updates=120):
         """Automated training: wait for updates, aggregate, repeat"""
         print(f"Starting automated training for {num_rounds} rounds")
         print(f"Waiting {wait_for_updates}s for client updates each round\n")
