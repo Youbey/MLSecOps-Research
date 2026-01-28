@@ -73,13 +73,13 @@ pipeline {
                             --json -o semgrep-report.json --metrics=off
                         '''
 
-                        stash includes: 'fl-project/*.json', name: 'sast-reports'
+                        stash includes: '*.json', name: 'sast-reports'
                     }
                 }
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'fl-project/*-report.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: '*.json', allowEmptyArchive: true
                 }
             }
         }
