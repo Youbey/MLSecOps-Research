@@ -29,7 +29,7 @@ pipeline {
         
         string(
             name: 'FL_WAIT',
-            defaultValue: '15',
+            defaultValue: '60',
             description: 'Wait time between rounds (seconds)'
         )
         
@@ -72,6 +72,8 @@ pipeline {
                             semgrep scan --config=/src/quality_assurance/semgrep-rules.yaml \
                             --json -o semgrep-report.json --metrics=off
                         '''
+
+                        stash includes: 'fl-project/*.json', name: 'sast-reports'
                     }
                 }
             }
@@ -101,7 +103,7 @@ pipeline {
                 dir('fl-project') {
                     sh '''
                         echo "Building Docker images once (no rebuilds per attack)"
-                        docker compose -f docker-compose-app.yml build --no-cache
+                        docker compose -f docker-compose-app.yml build
                         docker images | grep -E "fl-project|python"
                         echo " Docker images built"
                     '''
@@ -436,6 +438,7 @@ PYTHON_SCRIPT
             steps {
                 echo '========== STAGE: Publish Metrics =========='
                 dir('fl-project') {
+                    unstash 'sast-reports'
                     sh '''
                         # Ensure we are in the same environment or reinstall requests
                         python3 -m venv venv
