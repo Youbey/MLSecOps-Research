@@ -298,7 +298,8 @@ def status():
         'round': server.round,
         'clients': server.client_states,
         'pending_updates': list(server.client_updates.keys()),
-        'rejected_updates': len(server.rejected_updates)
+        'rejected_updates': len(server.rejected_updates),
+        'history': server.training_history
     })
 
 @app.route('/security/status', methods=['GET'])

@@ -421,16 +421,13 @@ PYTHON_SCRIPT
         stage(' Cleanup') {
             steps {
                 echo '========== STAGE: Cleanup =========='
-                sh '''
-                    # Only stop the app, keep Grafana running!
-                    # Uncomment below to stop:
-                    docker compose -f docker-compose-app.yml down -v
-                    echo " Application stopped. Monitoring infrastructure is still running."
-                    
-                    echo " System ready for inspection"
-                    echo "   Server: http://localhost:5000"
-                    echo "   Security Status: curl http://localhost:5000/security/status"
-                '''
+                dir('fl-project') {
+                    sh '''
+                        # Only stop the app, keep Grafana running!
+                        docker compose -f docker-compose-app.yml down -v
+                        echo " Application stopped. Monitoring infrastructure is still running."
+                    '''
+                }
             }
         }
 
