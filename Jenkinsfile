@@ -88,7 +88,7 @@ pipeline {
                 dir('fl-project') {
                     sh '''
                         echo "Building Docker images once (no rebuilds per attack)"
-                        docker compose build
+                        docker compose -f docker-compose-app.yml build
                         docker images | grep -E "fl-project|python"
                         echo " Docker images built"
                     '''
@@ -462,9 +462,9 @@ PYTHON_SCRIPT
             dir('fl-project') {
                 sh '''
                     # Save Docker logs
-                    docker compose logs > docker compose.log || true
-                    docker compose logs fl_server > server.log || true
-                    docker compose logs fl_malicious_client > malicious-client.log || true
+                    docker logs > docker compose.log || true
+                    docker logs fl_server > server.log || true
+                    docker logs fl_malicious_client > malicious-client.log || true
                 '''
             }
             archiveArtifacts artifacts: '*.log', allowEmptyArchive: true
