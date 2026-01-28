@@ -165,7 +165,9 @@ pipeline {
                             runAttackScenario(attack)
                         }
                         // Also run baseline (no attack)
-                        runAttackScenario('NONE')
+                        // runAttackScenario('NONE')
+                        runAttackScenario('POISONING')
+
                     } else {
                         // Run single selected attack
                         echo " Running single attack scenario: ${params.ATTACK_MODE}"
