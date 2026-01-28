@@ -81,6 +81,19 @@ pipeline {
                 }
             }
         }
+
+        stage(' Acquisition & Preparation') {
+                    steps {
+                        echo '========== STAGE: Data Preparation =========='
+                        dir('fl-project') {
+                            sh '''
+                                # Run the preparation inside a container to ensure dependencies exist
+                                docker run --rm -v $(pwd):/app -w /app python:3.10-slim sh -c "pip install requests numpy tensorflow && python fetch_and_split.py"
+                                ls -lah data/
+                            '''
+                        }
+                    }
+                }
         
         stage(' Build (Single Time)') {
             steps {
@@ -126,19 +139,6 @@ pipeline {
                 }
             }
         }
-
-        stage(' Acquisition & Preparation') {
-            steps {
-                echo '========== STAGE: Data Preparation =========='
-                dir('fl-project') {
-                    sh '''
-                        # Run the preparation inside a container to ensure dependencies exist
-                        docker run --rm -v $(pwd):/app -w /app python:3.10-slim sh -c "pip install requests numpy tensorflow && python fetch_and_split.py"
-                        ls -lah data/
-                    '''
-                }
-            }
-        }   
                 
         // =====================================================
         // DYNAMIC: Run selected attack scenario(s)

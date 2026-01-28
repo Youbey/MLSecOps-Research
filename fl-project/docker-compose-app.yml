@@ -33,7 +33,7 @@ services:
     environment:
       - CLIENT_ID=client_1
       - SERVER_URL=http://server:5000
-      - DATA_FILE=/data/client_1_data.json
+      - DATA_FILE=/app/data/client_1_data.json
     volumes:
       - ./client.py:/app/client.py
       - ./data:/app/data
@@ -55,7 +55,7 @@ services:
     environment:
       - CLIENT_ID=malicious_client
       - SERVER_URL=http://server:5000
-      - DATA_FILE=/data/malicious_client_data.json
+      - DATA_FILE=/app/data/malicious_client_data.json
       - ATTACK_MODE=${ATTACK_MODE:-NONE}
     volumes:
       - ./malicious_client.py:/app/malicious_client.py
