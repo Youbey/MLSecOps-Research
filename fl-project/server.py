@@ -93,7 +93,8 @@ class FLServer:
                 'updates_sent': 0,
                 'updates_accepted': 0,
                 'suspicious_count': 0,
-                'last_seen': datetime.now().isoformat()
+                'last_seen': datetime.now().isoformat(),
+                'data_samples': meta_data.get('num_samples', 0)
             }
             logger.info(f"Client {client_id} registered")
 

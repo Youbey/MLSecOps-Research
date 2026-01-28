@@ -101,17 +101,27 @@ pipeline {
                 echo '========== STAGE: Deploy =========='
                 dir('fl-project') {
                     sh '''
-                        # Stop any existing containers
-                        docker compose down -v || true
-                        
-                        # Start fresh
-                        docker compose up -d
+                        # 1. Start Infrastructure (Background, won't restart if running)
+                        docker compose -f docker-compose-infra.yml up -d
+
+                        # 2. Restart Application (Force recreate to clear state)
+                        docker compose -f docker-compose-app.yml down -v
+                        docker compose -f docker-compose-app.yml up -d --build
+
                         echo "Waiting for services to start..."
-                        sleep 60
-                        
-                        # Verify services
-                        curl -f http://localhost:5000/health || exit 1
-                        echo " Services deployed successfully"
+                        sleep 10 # Shorter wait because infra is already up
+
+                        # Health check loop
+                        for i in {1..12}; do
+                            if curl -s http://localhost:5000/health > /dev/null; then
+                                echo " Services deployed successfully"
+                                exit 0
+                            fi
+                            echo "Waiting for server... ($i/12)"
+                            sleep 5
+                        done
+                        echo "Server failed to start"
+                        exit 1
                     '''
                 }
             }
@@ -412,9 +422,10 @@ PYTHON_SCRIPT
             steps {
                 echo '========== STAGE: Cleanup =========='
                 sh '''
-                    # Keep containers running for inspection
+                    # Only stop the app, keep Grafana running!
                     # Uncomment below to stop:
-                    # docker compose down
+                    docker compose -f docker-compose-app.yml down -v
+                    echo " Application stopped. Monitoring infrastructure is still running."
                     
                     echo " System ready for inspection"
                     echo "   Server: http://localhost:5000"
@@ -483,7 +494,7 @@ def runAttackScenario(String attackMode) {
             sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/\" docker-compose.yml
             
             # Restart the malicious client to apply the new mode
-            docker compose up -d --no-deps --build malicious_client
+            docker compose -f docker-compose-app.yml up -d --no-deps --build malicious_client
             
             # Wait for client to check in
             sleep 5
