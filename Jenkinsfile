@@ -456,24 +456,22 @@ PYTHON_SCRIPT
     post {
         always {
             echo '========== Build Complete =========='
-            archiveArtifacts artifacts: 'security_audits/**, security_analysis_reports/**, performance_reports/**', allowEmptyArchive: true
-            
-            // Cleanup
+            archiveArtifacts artifacts: 'fl-project/*-report.html, fl-project/performance_reports/*.json, fl-project/security_analysis_reports/*.json', allowEmptyArchive: true
+
             dir('fl-project') {
                 sh '''
-                    # Save Docker logs
-                    docker logs > docker compose.log || true
-                    docker logs fl_server > server.log || true
-                    docker logs fl_malicious_client > malicious-client.log || true
+                    # Capture logs from the containers we know exist
+                    # || true ensures the build doesn't fail if a container is missing
+                    docker logs fl_server > server.log 2>&1 || true
+                    docker logs fl_malicious_client > malicious_client.log 2>&1 || true
+                    docker logs fl_client_1 > client_1.log 2>&1 || true
                 '''
             }
-            archiveArtifacts artifacts: '*.log', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'fl-project/*.log', allowEmptyArchive: true
         }
-        
         success {
             echo ' Pipeline completed successfully!'
         }
-        
         failure {
             echo ' Pipeline failed!'
         }
