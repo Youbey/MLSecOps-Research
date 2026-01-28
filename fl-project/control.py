@@ -143,7 +143,7 @@ def main():
                        help='Number of rounds for automated training')
     parser.add_argument('--interval', type=int, default=10,
                        help='Monitoring interval in seconds')
-    parser.add_argument('--wait', type=int, default=15,
+    parser.add_argument('--wait', type=int, default=120,
                        help='Wait time for client updates in seconds')
     
     args = parser.parse_args()
