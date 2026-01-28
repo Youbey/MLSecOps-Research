@@ -88,7 +88,7 @@ pipeline {
                 dir('fl-project') {
                     sh '''
                         echo "Building Docker images once (no rebuilds per attack)"
-                        docker compose -f docker-compose-app.yml build
+                        docker compose -f docker-compose-app.yml build --no-cache
                         docker images | grep -E "fl-project|python"
                         echo " Docker images built"
                     '''
