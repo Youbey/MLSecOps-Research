@@ -16,6 +16,7 @@ services:
       - "5000:5000"
     volumes:
       - ../../app:/app
+      - ../../scripts:/app/scripts
       - ../../data:/app/data
     command: python server.py
     networks:
@@ -36,6 +37,7 @@ services:
       - DATA_FILE=/app/data/client_1_data.json
     volumes:
       - ../../app:/app
+      - ../../scripts:/app/scripts
       - ../../data:/app/data
     command: python client.py
     networks:
@@ -59,6 +61,7 @@ services:
       - ATTACK_MODE=${ATTACK_MODE:-NONE}
     volumes:
       - ../../app:/app
+      - ../../scripts:/app/scripts
       - ../../data:/app/data
     command: python malicious_client.py
     networks:
