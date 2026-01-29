@@ -63,7 +63,7 @@ pipeline {
                         sh '''
                         docker run --rm -v $(pwd):/code --user $(id -u):$(id -g) python:3.10-slim sh -c "
                             pip install bandit -q &&
-                            bandit -c /code/app -f json -o /code/bandit-report.json --exit-zero
+                            bandit -c /code/qa/bandit.yml -r /code/app -f json -o /code/bandit-report.json --exit-zero
                         "
                         '''
 
