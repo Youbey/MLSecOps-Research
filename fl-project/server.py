@@ -138,7 +138,7 @@ class FLServer:
                 rejection_reason = "POISONING_DETECTED"
                 confidence = analysis.get('confidence', 0.95)
 
-                logger.warning(f"🚨 POISONING DETECTED from {client_id} (Conf: {confidence:.2f})")
+                logger.warning(f"POISONING DETECTED from {client_id} (Conf: {confidence:.2f})")
 
                 # GRAFANA LOG: Attack Detected
                 structured_logger.log_attack_detected(

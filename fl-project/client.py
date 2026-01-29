@@ -27,9 +27,9 @@ class FLClient:
     def _create_model(self):
         # Match server's vocab size of 10000
         model = tf.keras.Sequential([
-            tf.keras.layers.Embedding(1000, 64, input_length=3),
-            tf.keras.layers.LSTM(64),
-            tf.keras.layers.Dense(1000, activation='softmax')
+            tf.keras.layers.Embedding(10000, 100, input_length=3),
+            tf.keras.layers.LSTM(150),
+            tf.keras.layers.Dense(10000, activation='softmax')
         ])
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
         
@@ -84,9 +84,8 @@ class FLClient:
         except Exception as e:
             logger.error(f"Failed to fetch model: {e}")
             return False
-
-    #Epochs 1 just to fast testing
-    def train_locally(self, epochs=1):
+    
+    def train_locally(self, epochs=2):
         """Train model locally"""
         logger.info(f"Starting local training for {epochs} epochs")
         X, y = self.training_data
@@ -126,7 +125,7 @@ class FLClient:
                 json=payload
             )
 
-            if response.status.code == 200:
+            if response.status_code == 200:
                 logger.info(f"Update submitted: {size_bytes} bytes, "f"status={response.json().get('status')}")
                 return True
             else:
@@ -159,7 +158,7 @@ def main():
     logger.name = f"FL-Client-{client_id}"
     
     # Wait for server to start
-    for attempt in range(30):
+    for attempt in range(10):
         try:
             requests.get(f'{server_url}/health', timeout=2)
             break
@@ -174,9 +173,6 @@ def main():
     logger.info(f"\n>>> Cycle {cycle}")
     client.run_training_cycle()
     logger.info(f" Training complete. Client exiting.")
-
-    # Wait for logs export
-    time.sleep(5)
 
 if __name__ == '__main__':
     main()
