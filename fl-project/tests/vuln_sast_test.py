@@ -6,3 +6,5 @@ def risky_code(user_input):
     # Bandit should flag B301 (Pickle) and B602 (Shell)
     obj = pickle.loads(user_input)
     subprocess.Popen("echo " + user_input, shell=True)
+
+def danger(x): return pickle.loads(x)
