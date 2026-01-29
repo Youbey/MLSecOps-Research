@@ -112,7 +112,7 @@ pipeline {
                 dir('fl-project') {
                     sh '''
                         echo "Building Docker images once (no rebuilds per attack)"
-                        docker compose -f docker-compose-app.yml build
+                        docker compose -f infra/docker/docker-compose-app.yml build
                         docker images | grep -E "fl-project|python"
                         echo " Docker images built"
                     '''
@@ -126,11 +126,11 @@ pipeline {
                 dir('fl-project') {
                     sh '''
                         # 1. Start Infrastructure (Background, won't restart if running)
-                        docker compose -f docker-compose-infra.yml up -d
+                        docker compose -f infra/docker/docker-compose-infra.yml up -d
 
                         # 2. Restart Application (Force recreate to clear state)
-                        docker compose -f docker-compose-app.yml down -v
-                        docker compose -f docker-compose-app.yml up -d --build
+                        docker compose -f infra/docker/docker-compose-app.yml down -v
+                        docker compose -f infra/docker/docker-compose-app.yml up -d --build
 
                         echo "Waiting for services to start..."
                         sleep 10 # Shorter wait because infra is already up
@@ -498,10 +498,10 @@ def runAttackScenario(String attackMode) {
             set -e
             
             # FIX: Point to the new APP compose file
-            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" docker-compose-app.yml
+            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" infra/docker/docker-compose-app.yml
 
             # FIX: Point to the new APP compose file
-            docker compose -f docker-compose-app.yml up -d --no-deps --build malicious_client
+            docker compose -f infra/docker/docker-compose-app.yml up -d --no-deps --build malicious_client
 
             sleep 5
 
