@@ -53,6 +53,6 @@ services:
     volumes:
       - ../monitoring/grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
       - ../monitoring/grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
-      - ../monitoring/grafana/provisioning/dashboards/grafana-dashboard.json:/etc/grafana/provisioning/dashboards/grafana-dashboard.json
+      - ../monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
     networks:
       - fl_network

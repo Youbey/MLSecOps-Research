@@ -1,0 +1,39 @@
+{
+  "title": "2. FL - Security Center",
+  "uid": "fl-security-center",
+  "tags": ["security", "attacks"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "panels": [
+    {
+      "title": "Attack Detection Feed",
+      "type": "logs",
+      "gridPos": { "h": 14, "w": 14, "x": 0, "y": 0 },
+      "datasource": "Loki",
+      "targets": [
+        { "expr": "{job=\"fl_server\"} | json | event_type=~\"ATTACK_DETECTED|ATTACK_REJECTED\"" }
+      ]
+    },
+    {
+      "title": "Attacks by Type",
+      "type": "piechart",
+      "gridPos": { "h": 14, "w": 10, "x": 14, "y": 0 },
+      "datasource": "Loki",
+      "targets": [
+        { "expr": "{job=\"fl_server\"} | json | event_type=\"ATTACK_DETECTED\" | attack_type" }
+      ]
+    },
+    {
+      "title": "High Confidence Threats (>90%)",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "datasource": "Loki",
+      "targets": [
+        { "expr": "{job=\"fl_server\"} | json | event_type=\"ATTACK_DETECTED\" | confidence > 0.9" }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "renameByName": { "client_id": "Attacker", "attack_type": "Attack", "confidence": "Conf.", "timestamp": "Time" } } }
+      ]
+    }
+  ]
+}

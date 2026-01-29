@@ -29,7 +29,7 @@ pipeline {
         
         string(
             name: 'FL_WAIT',
-            defaultValue: '180',
+            defaultValue: '15',
             description: 'Wait time between rounds (seconds)'
         )
         

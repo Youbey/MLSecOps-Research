@@ -1,0 +1,51 @@
+{
+  "title": "1. FL - Code Quality (SAST)",
+  "uid": "fl-code-quality",
+  "tags": ["sast", "devops"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "panels": [
+    {
+      "title": "Overall Code Quality Score",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "10 - (sast_pylint_errors * 0.5) - (sast_pylint_warnings * 0.1)", "legendFormat": "Estimated Score" }
+      ],
+      "fieldConfig": { "defaults": { "min": 0, "max": 10, "thresholds": { "steps": [ { "color": "red", "value": 0 }, { "color": "yellow", "value": 5 }, { "color": "green", "value": 8 } ] } } }
+    },
+    {
+      "title": "Pylint Issues",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sast_pylint_errors", "legendFormat": "Errors" },
+        { "expr": "sast_pylint_warnings", "legendFormat": "Warnings" },
+        { "expr": "sast_pylint_convention", "legendFormat": "Conventions" }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 1 } ] } } }
+    },
+    {
+      "title": "Security Vulnerabilities (Bandit)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sast_bandit_issues_high", "legendFormat": "High" },
+        { "expr": "sast_bandit_issues_medium", "legendFormat": "Medium" }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [ { "color": "green", "value": 0 }, { "color": "red", "value": 1 } ] } } }
+    },
+    {
+      "title": "Coding Standards (Semgrep)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sast_semgrep_issues", "legendFormat": "Issues" }
+      ]
+    }
+  ]
+}
