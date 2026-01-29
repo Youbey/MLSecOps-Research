@@ -62,7 +62,7 @@ services:
       - ../../data:/app/data
     command: python malicious_client.py
     networks:
-      - fl_network
+      - docker_fl_network
     depends_on:
       - server
     logging:
