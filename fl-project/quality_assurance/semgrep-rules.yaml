@@ -1,8 +1,0 @@
-# fl-project/semgrep-rules.yaml
-rules:
-  - id: python-pickle-usage
-    patterns:
-      - pattern: pickle.loads(...)
-    message: "CRITICAL: unsafe deserialization detected. This allows Remote Code Execution (RCE) from malicious clients."
-    languages: [python]
-    severity: ERROR

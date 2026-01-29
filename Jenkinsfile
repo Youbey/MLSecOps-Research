@@ -63,14 +63,23 @@ pipeline {
                         sh '''
                         docker run --rm -v $(pwd):/code --user $(id -u):$(id -g) python:3.10-slim sh -c "
                             pip install bandit -q &&
-                            bandit -c /code/quality_assurance/bandit.yml -r /code -f json -o /code/bandit-report.json --exit-zero
+                            bandit -c /code/app -f json -o /code/bandit-report.json --exit-zero
                         "
                         '''
 
                         sh '''
                         docker run --rm -v $(pwd):/src --user $(id -u):$(id -g) returntocorp/semgrep \
-                            semgrep scan --config=/src/quality_assurance/semgrep-rules.yaml \
-                            --json -o semgrep-report.json --metrics=off
+                            semgrep scan --config=/src/qa/semgrep-rules.yaml \
+                            --json -o semgrep-report.json --metrics=off /src/app
+                        '''
+                        // 3. Pylint (Scan folder 'app')
+                        // the || true, prevents build failaure even if score is low
+                        sh '''
+                        docker run --rm -v $(pwd):/code --user $(id -u):$(id -g) python:3.10-slim sh -c "
+                            pip install pylint flask tensorflow numpy requests prometheus-client -q &&
+                            export PYTHONPATH=/code/app &&
+                            pylint /code/app --output-format=json > /code/pylint-report.json || true
+                        "
                         '''
 
                         stash includes: '*.json', name: 'sast-reports'
@@ -446,7 +455,7 @@ PYTHON_SCRIPT
                         pip install requests
 
                         # Run the exporter script
-                        python3 quality_assurance/export_metrics.py
+                        python3 qa/export_metrics.py
                     '''
                 }
             }
