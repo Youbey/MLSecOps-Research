@@ -435,7 +435,7 @@ PYTHON_SCRIPT
                 dir('fl-project') {
                     sh '''
                         # Only stop the app, keep Grafana running!
-                        docker compose -f docker-compose-app.yml down -v
+                        docker compose -f infra/docker/docker-compose-app.yml down -v
                         echo " Application stopped. Monitoring infrastructure is still running."
                     '''
                 }
