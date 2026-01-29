@@ -48,8 +48,8 @@ def prepare_federated_data():
 
     # Split sequences for the clients (5,000 samples each)
     client_data = {
-        "client_1": input_sequences[:200].tolist(),
-        "malicious_client": input_sequences[200:400].tolist()
+        "client_1": input_sequences[:5000].tolist(),
+        "malicious_client": input_sequences[5000:10000].tolist()
     }
 
     for client_id, data in client_data.items():
