@@ -7,7 +7,7 @@ exclude_dirs:
   - venv
   - .venv
 
-skips: ['B101'] # Skip assert
+#skips: ['B101'] # Skip assert
 
 profiles:
   fl_security:
