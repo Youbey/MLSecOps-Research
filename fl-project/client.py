@@ -27,9 +27,9 @@ class FLClient:
     def _create_model(self):
         # Match server's vocab size of 10000
         model = tf.keras.Sequential([
-            tf.keras.layers.Embedding(10000, 100, input_length=3),
-            tf.keras.layers.LSTM(150),
-            tf.keras.layers.Dense(10000, activation='softmax')
+            tf.keras.layers.Embedding(1000, 64, input_length=3),
+            tf.keras.layers.LSTM(64),
+            tf.keras.layers.Dense(1000, activation='softmax')
         ])
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
         

@@ -18,9 +18,15 @@ def prepare_federated_data():
     text = re.sub(r'[^a-z\s]', '', text)
     
     # Article step: Tokenizer process
-    tokenizer = Tokenizer()
+    ## Old code #############
+    #tokenizer = Tokenizer()
+    #tokenizer.fit_on_texts([text])
+    #total_words = len(tokenizer.word_index) + 1
+    #print(f"Total vocabulary size: {total_words}")
+    ###################################################
+    tokenizer = Tokenizer(num_words=1000, oov_token="<OOV>")
     tokenizer.fit_on_texts([text])
-    total_words = len(tokenizer.word_index) + 1
+    total_words = 1000
     print(f"Total vocabulary size: {total_words}")
 
     # Article step: N-gram generation
