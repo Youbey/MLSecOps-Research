@@ -85,7 +85,7 @@ class FLClient:
             logger.error(f"Failed to fetch model: {e}")
             return False
     
-    def train_locally(self, epochs=2):
+    def train_locally(self, epochs=1):
         """Train model locally"""
         logger.info(f"Starting local training for {epochs} epochs")
         X, y = self.training_data
