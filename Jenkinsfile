@@ -79,7 +79,7 @@ pipeline {
             }
             post {
                 always {
-                    archiveArtifacts artifacts: '*.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'fl-project/*.json', allowEmptyArchive: true
                 }
             }
         }

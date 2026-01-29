@@ -84,7 +84,8 @@ class FLClient:
         except Exception as e:
             logger.error(f"Failed to fetch model: {e}")
             return False
-    
+
+    #Epochs 1 just to fast testing
     def train_locally(self, epochs=1):
         """Train model locally"""
         logger.info(f"Starting local training for {epochs} epochs")
@@ -124,10 +125,13 @@ class FLClient:
                 f'{self.server_url}/submit_update',
                 json=payload
             )
-            
-            logger.info(f"Update submitted: {size_bytes} bytes, "
-                       f"status={response.json().get('status')}")
-            return True
+
+            if response.status.code == 200:
+                logger.info(f"Update submitted: {size_bytes} bytes, "f"status={response.json().get('status')}")
+                return True
+            else:
+                logger.error(f"Update rejected: {response.text}")
+                return False
         except Exception as e:
             logger.error(f"Failed to submit update: {e}")
             return False
@@ -155,7 +159,7 @@ def main():
     logger.name = f"FL-Client-{client_id}"
     
     # Wait for server to start
-    for attempt in range(10):
+    for attempt in range(30):
         try:
             requests.get(f'{server_url}/health', timeout=2)
             break
@@ -166,37 +170,13 @@ def main():
     client = FLClient(client_id, server_url, data_file)
     
     # Run single training cycle (not continuous)
-    #cycle = 1
-    #logger.info(f"\n>>> Cycle {cycle}")
-    #client.run_training_cycle()
-    #logger.info(f" Training complete. Client exiting.")
+    cycle = 1
+    logger.info(f"\n>>> Cycle {cycle}")
+    client.run_training_cycle()
+    logger.info(f" Training complete. Client exiting.")
 
-    client = FLClient(client_id, server_url, data_file)
-
-    current_round = -1
-
-    # Loop indefinitely (Docker will kill it when done)
-    while True:
-        try:
-            # Poll server status
-            response = requests.get(f'{server_url}/health')
-            server_round = response.json().get('round', 0)
-
-            if server_round > current_round:
-                logger.info(f"New round detected: {server_round}")
-
-                # Fetch -> Train -> Submit
-                if client.run_training_cycle():
-                    current_round = server_round
-                    logger.info(f"Round {server_round} completed. Waiting for next round...")
-                else:
-                    logger.error("Training cycle failed.")
-
-            time.sleep(5) # Poll every 5 seconds
-
-        except Exception as e:
-            logger.error(f"Connection error: {e}")
-            time.sleep(10)
+    # Wait for logs export
+    time.sleep(5)
 
 if __name__ == '__main__':
     main()
