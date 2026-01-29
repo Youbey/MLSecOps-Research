@@ -99,7 +99,7 @@ pipeline {
                         dir('fl-project') {
                             sh '''
                                 # Run the preparation inside a container to ensure dependencies exist
-                                docker run --rm -v $(pwd):/app -w /app python:3.10-slim sh -c "pip install requests numpy tensorflow && python fetch_and_split.py"
+                                docker run --rm -v $(pwd):/app -w /app python:3.10-slim sh -c "pip install requests numpy tensorflow && python scripts/fetch_and_split.py"
                                 ls -lah data/
                             '''
                         }
@@ -506,7 +506,7 @@ def runAttackScenario(String attackMode) {
             sleep 5
 
             # This remains the same
-            docker exec fl_server python3 control.py --mode train --rounds ${FL_ROUNDS} --wait ${FL_WAIT}
+            docker exec fl_server python3 scripts/control.py --mode train --rounds ${FL_ROUNDS} --wait ${FL_WAIT}
             
             echo " Attack scenario ''' + attackMode + ''' completed"
         '''
