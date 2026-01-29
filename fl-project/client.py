@@ -166,10 +166,37 @@ def main():
     client = FLClient(client_id, server_url, data_file)
     
     # Run single training cycle (not continuous)
-    cycle = 1
-    logger.info(f"\n>>> Cycle {cycle}")
-    client.run_training_cycle()
-    logger.info(f" Training complete. Client exiting.")
+    #cycle = 1
+    #logger.info(f"\n>>> Cycle {cycle}")
+    #client.run_training_cycle()
+    #logger.info(f" Training complete. Client exiting.")
+
+    client = FLClient(client_id, server_url, data_file)
+
+    current_round = -1
+
+    # Loop indefinitely (Docker will kill it when done)
+    while True:
+        try:
+            # Poll server status
+            response = requests.get(f'{server_url}/health')
+            server_round = response.json().get('round', 0)
+
+            if server_round > current_round:
+                logger.info(f"New round detected: {server_round}")
+
+                # Fetch -> Train -> Submit
+                if client.run_training_cycle():
+                    current_round = server_round
+                    logger.info(f"Round {server_round} completed. Waiting for next round...")
+                else:
+                    logger.error("Training cycle failed.")
+
+            time.sleep(5) # Poll every 5 seconds
+
+        except Exception as e:
+            logger.error(f"Connection error: {e}")
+            time.sleep(10)
 
 if __name__ == '__main__':
     main()
