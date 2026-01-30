@@ -105,7 +105,7 @@ class FLController:
         except KeyboardInterrupt:
             print("\nMonitoring stopped")
     
-    def automated_training(self, num_rounds=5, wait_for_updates=120):
+    def automated_training(self, num_rounds=5, wait_for_updates=30):
         """Automated training: wait for updates, aggregate, repeat"""
         print(f"Starting automated training for {num_rounds} rounds")
         print(f"Waiting {wait_for_updates}s for client updates each round\n")
@@ -143,7 +143,7 @@ def main():
                        help='Number of rounds for automated training')
     parser.add_argument('--interval', type=int, default=10,
                        help='Monitoring interval in seconds')
-    parser.add_argument('--wait', type=int, default=120,
+    parser.add_argument('--wait', type=int, default=60,
                        help='Wait time for client updates in seconds')
     
     args = parser.parse_args()

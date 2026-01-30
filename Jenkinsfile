@@ -63,24 +63,48 @@ pipeline {
                         sh '''
                         docker run --rm -v $(pwd):/code --user $(id -u):$(id -g) python:3.10-slim sh -c "
                             pip install bandit -q &&
-                            bandit -c /code/quality_assurance/bandit.yml -r /code -f json -o /code/bandit-report.json --exit-zero
+                            bandit -c /code/qa/bandit.yml -r /code/app -f json -o /code/bandit-report.json --exit-zero
                         "
                         '''
 
                         sh '''
                         docker run --rm -v $(pwd):/src --user $(id -u):$(id -g) returntocorp/semgrep \
-                            semgrep scan --config=/src/quality_assurance/semgrep-rules.yaml \
-                            --json -o semgrep-report.json --metrics=off
+                            semgrep scan --config=/src/qa/semgrep-rules.yaml \
+                            --json -o semgrep-report.json --metrics=off /src/app
                         '''
+                        // 3. Pylint (Scan folder 'app')
+                        // the || true, prevents build failaure even if score is low
+                        sh '''
+                        docker run --rm -v $(pwd):/code --user $(id -u):$(id -g) python:3.10-slim sh -c "
+                            pip install pylint flask tensorflow numpy requests prometheus-client -q &&
+                            export PYTHONPATH=/code/app &&
+                            pylint /code/app --output-format=json > /code/pylint-report.json || true
+                        "
+                        '''
+
+                        stash includes: '*.json', name: 'sast-reports'
                     }
                 }
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'fl-project/*-report.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'fl-project/*.json', allowEmptyArchive: true
                 }
             }
         }
+
+        stage(' Acquisition & Preparation') {
+                    steps {
+                        echo '========== STAGE: Data Preparation =========='
+                        dir('fl-project') {
+                            sh '''
+                                # Run the preparation inside a container to ensure dependencies exist
+                                docker run --rm -v $(pwd):/app -w /app python:3.10-slim sh -c "pip install requests numpy tensorflow && python scripts/fetch_and_split.py"
+                                ls -lah data/
+                            '''
+                        }
+                    }
+                }
         
         stage(' Build (Single Time)') {
             steps {
@@ -88,7 +112,7 @@ pipeline {
                 dir('fl-project') {
                     sh '''
                         echo "Building Docker images once (no rebuilds per attack)"
-                        docker compose build
+                        docker compose -f infra/docker/docker-compose-app.yml build
                         docker images | grep -E "fl-project|python"
                         echo " Docker images built"
                     '''
@@ -101,34 +125,31 @@ pipeline {
                 echo '========== STAGE: Deploy =========='
                 dir('fl-project') {
                     sh '''
-                        # Stop any existing containers
-                        docker compose down -v || true
-                        
-                        # Start fresh
-                        docker compose up -d
+                        # 1. Start Infrastructure (Background, won't restart if running)
+                        docker compose -f infra/docker/docker-compose-infra.yml up -d
+
+                        # 2. Restart Application (Force recreate to clear state)
+                        docker compose -f infra/docker/docker-compose-app.yml down -v
+                        docker compose -f infra/docker/docker-compose-app.yml up -d --build
+
                         echo "Waiting for services to start..."
-                        sleep 60
-                        
-                        # Verify services
-                        curl -f http://localhost:5000/health || exit 1
-                        echo " Services deployed successfully"
+                        sleep 10 # Shorter wait because infra is already up
+
+                        # Health check loop
+                        for i in {1..12}; do
+                            if curl -s http://localhost:5000/health > /dev/null; then
+                                echo " Services deployed successfully"
+                                exit 0
+                            fi
+                            echo "Waiting for server... ($i/12)"
+                            sleep 5
+                        done
+                        echo "Server failed to start"
+                        exit 1
                     '''
                 }
             }
         }
-
-        stage(' Acquisition & Preparation') {
-            steps {
-                echo '========== STAGE: Data Preparation =========='
-                dir('fl-project') {
-                    sh '''
-                        # Run the preparation inside a container to ensure dependencies exist
-                        docker run --rm -v $(pwd):/app -w /app python:3.10-slim sh -c "pip install requests numpy tensorflow && python fetch_and_split.py"
-                        ls -lah data/
-                    '''
-                }
-            }
-        }   
                 
         // =====================================================
         // DYNAMIC: Run selected attack scenario(s)
@@ -411,15 +432,13 @@ PYTHON_SCRIPT
         stage(' Cleanup') {
             steps {
                 echo '========== STAGE: Cleanup =========='
-                sh '''
-                    # Keep containers running for inspection
-                    # Uncomment below to stop:
-                    # docker compose down
-                    
-                    echo " System ready for inspection"
-                    echo "   Server: http://localhost:5000"
-                    echo "   Security Status: curl http://localhost:5000/security/status"
-                '''
+                dir('fl-project') {
+                    sh '''
+                        # Only stop the app, keep Grafana running!
+                        docker compose -f infra/docker/docker-compose-app.yml down -v
+                        echo " Application stopped. Monitoring infrastructure is still running."
+                    '''
+                }
             }
         }
 
@@ -428,6 +447,7 @@ PYTHON_SCRIPT
             steps {
                 echo '========== STAGE: Publish Metrics =========='
                 dir('fl-project') {
+                    unstash 'sast-reports'
                     sh '''
                         # Ensure we are in the same environment or reinstall requests
                         python3 -m venv venv
@@ -435,7 +455,7 @@ PYTHON_SCRIPT
                         pip install requests
 
                         # Run the exporter script
-                        python3 quality_assurance/export_metrics.py
+                        python3 qa/export_metrics.py
                     '''
                 }
             }
@@ -445,24 +465,22 @@ PYTHON_SCRIPT
     post {
         always {
             echo '========== Build Complete =========='
-            archiveArtifacts artifacts: 'security_audits/**, security_analysis_reports/**, performance_reports/**', allowEmptyArchive: true
-            
-            // Cleanup
+            archiveArtifacts artifacts: 'fl-project/*-report.html, fl-project/performance_reports/*.json, fl-project/security_analysis_reports/*.json', allowEmptyArchive: true
+
             dir('fl-project') {
                 sh '''
-                    # Save Docker logs
-                    docker compose logs > docker compose.log || true
-                    docker compose logs fl_server > server.log || true
-                    docker compose logs fl_malicious_client > malicious-client.log || true
+                    # Capture logs from the containers we know exist
+                    # || true ensures the build doesn't fail if a container is missing
+                    docker logs fl_server > server.log 2>&1 || true
+                    docker logs fl_malicious_client > malicious_client.log 2>&1 || true
+                    docker logs fl_client_1 > client_1.log 2>&1 || true
                 '''
             }
-            archiveArtifacts artifacts: '*.log', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'fl-project/*.log', allowEmptyArchive: true
         }
-        
         success {
             echo ' Pipeline completed successfully!'
         }
-        
         failure {
             echo ' Pipeline failed!'
         }
@@ -479,19 +497,16 @@ def runAttackScenario(String attackMode) {
         sh '''
             set -e
             
-            # Update attack mode in docker-compose.yml
-            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/\" docker-compose.yml
-            
-            # Restart the malicious client to apply the new mode
-            docker compose up -d --no-deps --build malicious_client
-            
-            # Wait for client to check in
+            # FIX: Point to the new APP compose file
+            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" infra/docker/docker-compose-app.yml
+
+            # FIX: Point to the new APP compose file
+            docker compose -f infra/docker/docker-compose-app.yml up -d --no-deps --build malicious_client
+
             sleep 5
-            
-            # FIXED: Run control.py INSIDE the server container
-            docker exec fl_server python3 control.py --mode train \\
-                --rounds ${FL_ROUNDS} \\
-                --wait ${FL_WAIT}
+
+            # This remains the same
+            docker exec fl_server python3 scripts/control.py --mode train --rounds ${FL_ROUNDS} --wait ${FL_WAIT}
             
             echo " Attack scenario ''' + attackMode + ''' completed"
         '''

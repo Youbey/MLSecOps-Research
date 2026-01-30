@@ -1,0 +1,38 @@
+{
+  "title": "3. FL - Training Operations",
+  "uid": "fl-training-ops",
+  "tags": ["mlops", "training"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "panels": [
+    {
+      "title": "Training Rounds",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "fl_training_round", "legendFormat": "Round" }
+      ]
+    },
+    {
+      "title": "Updates Received vs Rejected",
+      "type": "timeseries",
+      "gridPos": { "h": 12, "w": 20, "x": 4, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sum(rate(fl_updates_received[1m]))", "legendFormat": "Received" },
+        { "expr": "sum(rate(fl_updates_rejected[1m]))", "legendFormat": "Rejected" }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 50 } } }
+    },
+    {
+      "title": "Round History Log",
+      "type": "logs",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 12 },
+      "datasource": "Loki",
+      "targets": [
+        { "expr": "{job=\"fl_server\"} | json | event_type=~\"ROUND_START|ROUND_END\"" }
+      ]
+    }
+  ]
+}

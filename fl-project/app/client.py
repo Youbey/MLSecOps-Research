@@ -124,10 +124,13 @@ class FLClient:
                 f'{self.server_url}/submit_update',
                 json=payload
             )
-            
-            logger.info(f"Update submitted: {size_bytes} bytes, "
-                       f"status={response.json().get('status')}")
-            return True
+
+            if response.status_code == 200:
+                logger.info(f"Update submitted: {size_bytes} bytes, "f"status={response.json().get('status')}")
+                return True
+            else:
+                logger.error(f"Update rejected: {response.text}")
+                return False
         except Exception as e:
             logger.error(f"Failed to submit update: {e}")
             return False

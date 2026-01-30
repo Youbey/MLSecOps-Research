@@ -93,7 +93,8 @@ class FLServer:
                 'updates_sent': 0,
                 'updates_accepted': 0,
                 'suspicious_count': 0,
-                'last_seen': datetime.now().isoformat()
+                'last_seen': datetime.now().isoformat(),
+                'data_samples': meta_data.get('num_samples', 0)
             }
             logger.info(f"Client {client_id} registered")
 
@@ -137,7 +138,7 @@ class FLServer:
                 rejection_reason = "POISONING_DETECTED"
                 confidence = analysis.get('confidence', 0.95)
 
-                logger.warning(f"🚨 POISONING DETECTED from {client_id} (Conf: {confidence:.2f})")
+                logger.warning(f"POISONING DETECTED from {client_id} (Conf: {confidence:.2f})")
 
                 # GRAFANA LOG: Attack Detected
                 structured_logger.log_attack_detected(
@@ -297,7 +298,8 @@ def status():
         'round': server.round,
         'clients': server.client_states,
         'pending_updates': list(server.client_updates.keys()),
-        'rejected_updates': len(server.rejected_updates)
+        'rejected_updates': len(server.rejected_updates),
+        'history': server.training_history
     })
 
 @app.route('/security/status', methods=['GET'])

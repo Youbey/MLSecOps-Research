@@ -13,7 +13,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY . .
+COPY app/ .
+COPY scripts/ /app/scripts/
+
+ENV PYTHONPATH="${PYTHONPATH}:/app"
 
 # Default to server
 CMD ["python", "server.py"]
