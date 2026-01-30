@@ -211,16 +211,6 @@ pipeline {
             }
         }
         
-        stage(' Approval Gate (Optional)') {
-            when {
-                expression { params.ATTACK_MODE == 'ALL_SEQUENTIAL' }
-            }
-            steps {
-                echo '========== STAGE: Review Results =========='
-                input message: 'Review results. Deploy to production?', ok: 'Deploy'
-            }
-        }
-        
         stage(' Cleanup') {
             steps {
                 echo '========== STAGE: Cleanup =========='
