@@ -54,5 +54,6 @@ services:
       - ../monitoring/grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
       - ../monitoring/grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
       - ../monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ../monitoring/grafana/provisioning/alerting:/etc/grafana/provisioning/alerting
     networks:
       - fl_network
