@@ -14,6 +14,8 @@ services:
     container_name: fl_server
     ports:
       - "5000:5000"
+    environment:
+      - REGISTRATION_TOKEN=NAZIH_IS_THE_GOAT
     volumes:
       - ../../src:/app/src
       - ../../src/utils:/app/src/utils
@@ -36,6 +38,7 @@ services:
       - CLIENT_ID=client_1
       - SERVER_URL=http://server:5000
       - DATA_FILE=/app/data/client_1_data.json
+      - REGISTRATION_TOKEN=NAZIH_IS_THE_GOAT
     volumes:
       - ../../src:/app/src
       - ../../src/utils:/app/src/utils
@@ -61,6 +64,7 @@ services:
       - SERVER_URL=http://server:5000
       - DATA_FILE=/app/data/malicious_client_data.json
       - ATTACK_MODE=${ATTACK_MODE:-NONE}
+      - REGISTRATION_TOKEN=NAZIH_IS_THE_GOAT
     volumes:
       - ../../src:/app/src
       - ../../src/utils:/app/src/utils
