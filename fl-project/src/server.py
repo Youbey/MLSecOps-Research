@@ -40,7 +40,7 @@ class FLServer:
     
     def _load_or_create_model(self):
         """Load pre-trained model from file, or create new one if not found"""
-        model_path = os.getenv('SERVER_MODEL_PATH', './global_model.h5')
+        model_path = os.getenv('SERVER_MODEL_PATH', './data/global_model.h5')
         
         # Try to load pre-trained model
         if os.path.exists(model_path):
