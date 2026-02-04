@@ -20,7 +20,7 @@ logger = logging.getLogger("PoisoningDetector")
 
 # Import structured logger
 try:
-    from structured_logger import logger as structured_logger
+    from utils.structured_logger import logger as structured_logger
 except ImportError:
     structured_logger = None
 
