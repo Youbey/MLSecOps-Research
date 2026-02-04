@@ -1,81 +1,75 @@
-  apiVersion: 1
+apiVersion: 1
 
-  # 1. Définition des règles
-  groups:
-    - orgId: 1
-      name: 'FL-Security-Alerts'
-      folder: 'Federated Learning'
-      interval: 10s
-      rules:
-        # --- ALERTE 1 : ATTAQUE DÉTECTÉE (via Loki) ---
-        - uid: 'alert-attack-detected'
-          title: 'Active Attack Detected'
-          condition: 'B'
-          data:
-            - refId: 'A'
-              relativeTimeRange:
-                from: 300
-                to: 0
-              datasourceUid: 'P8E80F9AEF21F6940' # UID de Loki (tel que défini dans datasources.yml)
-              model:
-                # Compte le nombre d'attaques par minute
-                expr: 'count_over_time({job="fl_server"} | json | event_type="ATTACK_DETECTED" [1m])'
-                refId: 'A'
-            - refId: 'B'
-              datasourceUid: '__expr__'
-              model:
-                # Déclenche l'alerte si le compte est supérieur à 0
-                conditions: [ { evaluator: { params: [ 0 ], type: 'gt' }, operator: { type: 'and' }, query: { params: [ 'A' ] }, reducer: { params: [], type: 'sum' }, type: 'query' } ]
-                datasource: { type: '__expr__', uid: '__expr__' }
-                expression: 'A'
-                type: 'threshold'
-          noDataState: 'OK'
-          for: 0s # Déclenchement immédiat
-          annotations:
-            summary: 'Attack detected on FL Server'
-            description: 'The security module detected a malicious update attempting to poison the model.'
-          labels:
-            severity: 'critical'
-            category: 'security'
+groups:
+  - orgId: 1
+    name: 'FL-Security-Alerts'
+    folder: 'Federated Learning'
+    interval: 10s
+    rules:
+      - uid: 'alert-attack-detected'
+        title: 'Active Attack Detected'
+        condition: 'B'
+        data:
+          - refId: 'A'
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: 'P8E80F9AEF21F6940'
+            model:
+              expr: 'count_over_time({job="fl_server"} | json | event_type="ATTACK_DETECTED" [1m])'
+              refId: 'A'
+          - refId: 'B'
+            datasourceUid: '__expr__'
+            model:
+              conditions: [ { evaluator: { params: [ 0 ], type: 'gt' }, operator: { type: 'and' }, query: { params: [ 'A' ] }, reducer: { params: [], type: 'sum' }, type: 'query' } ]
+              datasource: { type: '__expr__', uid: '__expr__' }
+              expression: 'A'
+              type: 'threshold'
+        noDataState: 'OK'
+        for: 0s
+        annotations:
+          summary: 'Attack detected on FL Server'
+          description: 'The security module detected a malicious update attempting to poison the model.'
+        labels:
+          severity: 'critical'
+          category: 'security'
 
-        # --- ALERTE 2 : VULNÉRABILITÉ CRITIQUE DE CODE (via Prometheus) ---
-        - uid: 'alert-sast-critical'
-          title: '☣️ Critical Vulnerability in Code'
-          condition: 'B'
-          data:
-            - refId: 'A'
-              datasourceUid: 'PBFA97CFB590B2093' # UID de Prometheus
-              model:
-                expr: 'sast_bandit_issues_high'
-                refId: 'A'
-            - refId: 'B'
-              datasourceUid: '__expr__'
-              model:
-                conditions: [ { evaluator: { params: [ 0 ], type: 'gt' }, operator: { type: 'and' }, query: { params: [ 'A' ] }, reducer: { params: [], type: 'last' }, type: 'query' } ]
-                datasource: { type: '__expr__', uid: '__expr__' }
-                expression: 'A'
-                type: 'threshold'
-          noDataState: 'OK'
-          for: 1m
-          annotations:
-            summary: 'Critical SAST Issue Found'
-            description: 'Bandit scan found high-severity vulnerabilities in the production code.'
-          labels:
-            severity: 'warning'
-            category: 'code-quality'
+      - uid: 'alert-sast-critical'
+        title: '☣️ Critical Vulnerability in Code'
+        condition: 'B'
+        data:
+          - refId: 'A'
+            datasourceUid: 'PBFA97CFB590B2093'
+            model:
+              expr: 'sast_bandit_issues_high'
+              refId: 'A'
+          - refId: 'B'
+            datasourceUid: '__expr__'
+            model:
+              conditions: [ { evaluator: { params: [ 0 ], type: 'gt' }, operator: { type: 'and' }, query: { params: [ 'A' ] }, reducer: { params: [], type: 'last' }, type: 'query' } ]
+              datasource: { type: '__expr__', uid: '__expr__' }
+              expression: 'A'
+              type: 'threshold'
+        noDataState: 'OK'
+        for: 1m
+        annotations:
+          summary: 'Critical SAST Issue Found'
+          description: 'Bandit scan found high-severity vulnerabilities in the production code.'
+        labels:
+          severity: 'warning'
+          category: 'code-quality'
 
-  # 2. Politique de notification (Contact Points)
-  contactPoints:
-    - orgId: 1
-      name: 'Critical-Channel'
-      receivers:
-        - uid: 'email-receiver'
-          type: email
-          settings:
-            addresses: 'admin@example.com' # Placeholder (on changera ça dans l'UI pour tester)
-            singleEmail: true
+contactPoints:
+  - orgId: 1
+    name: 'Critical-Channel'
+    receivers:
+      - uid: 'email-receiver'
+        type: email
+        settings:
+          addresses: 'admin@example.com'
+          singleEmail: true
 
-  policies:
-    - orgId: 1
-      receiver: 'Critical-Channel'
-      group_by: ['alertname']
+policies:
+  - orgId: 1
+    receiver: 'Critical-Channel'
+    group_by: ['alertname']
