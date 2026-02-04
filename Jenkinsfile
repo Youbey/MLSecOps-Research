@@ -63,22 +63,22 @@ pipeline {
                         sh '''
                         docker run --rm -v $(pwd):/code --user $(id -u):$(id -g) python:3.10-slim sh -c "
                             pip install bandit -q &&
-                            bandit -c /code/qa/bandit.yml -r /code/app -f json -o /code/bandit-report.json --exit-zero
+                            bandit -c /code/qa/bandit.yml -r /code/src -f json -o /code/bandit-report.json --exit-zero
                         "
                         '''
 
                         sh '''
                         docker run --rm -v $(pwd):/src --user $(id -u):$(id -g) returntocorp/semgrep \
                             semgrep scan --config=/src/qa/semgrep-rules.yaml \
-                            --json -o semgrep-report.json --metrics=off /src/app
+                            --json -o semgrep-report.json --metrics=off /src/src
                         '''
                         // 3. Pylint (Scan folder 'app')
                         // the || true, prevents build failaure even if score is low
                         sh '''
                         docker run --rm -v $(pwd):/code --user $(id -u):$(id -g) python:3.10-slim sh -c "
                             pip install pylint flask tensorflow numpy requests prometheus-client -q &&
-                            export PYTHONPATH=/code/app &&
-                            pylint /code/app --output-format=json > /code/pylint-report.json || true
+                            export PYTHONPATH=/code/src &&
+                            pylint /code/src --output-format=json > /code/pylint-report.json || true
                         "
                         '''
 
