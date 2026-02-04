@@ -112,6 +112,9 @@ pipeline {
                 echo '========== STAGE: Deploy =========='
                 dir('fl-project') {
                     sh '''
+                        # temporary fix for alerts (TO BE REMOVED AFTER FIX)
+                        docker rm -f fl_grafana || true
+
                         # 1. Start Infrastructure (Background, won't restart if running)
                         docker compose -f infra/docker/docker-compose-infra.yml up -d
 
