@@ -16,6 +16,8 @@ import logging
 import sys
 import hashlib
 import time
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives import serialization
 
 # Import structured logger
 try:
@@ -68,6 +70,10 @@ class FLServer:
         self.client_states = {}
         self.rejected_updates = []
 
+        # Security: Key Store & Token
+        self.client_keys = {}  # Stocke les clés publiques {client_id: public_key_obj}
+        self.registration_token = os.getenv('REGISTRATION_TOKEN', 'default_insecure_token')
+
         # Security Detectors
         self.poisoning_detector = PoisoningDetector() if PoisoningDetector else None
         self.sybil_detector = SybilDetector() if SybilDetector else None
@@ -87,22 +93,44 @@ class FLServer:
 
     def register_client(self, client_id, meta_data):
         """Register a new client"""
+        # 1. Vérification du Token (Pre-shared Secret)
+        if token != self.registration_token:
+            logger.warning(f"Unauthorized registration attempt from {client_id}")
+            return {'status': 'rejected', 'reason': 'Invalid Registration Token'}, 403
+
+        # 2. Stockage de la clé publique
+        try:
+            public_key = serialization.load_pem_public_key(public_key_pem.encode())
+            self.client_keys[client_id] = public_key
+        except Exception as e:
+            logger.error(f"Invalid public key from {client_id}: {e}")
+            return {'status': 'rejected', 'reason': 'Invalid Public Key Format'}, 400
+        # 3. Initialisation de l'état
         if client_id not in self.client_states:
             self.client_states[client_id] = {
                 'joined_at': datetime.now().isoformat(),
-                'updates_sent': 0,
                 'updates_accepted': 0,
-                'suspicious_count': 0,
-                'last_seen': datetime.now().isoformat(),
-                'data_samples': meta_data.get('num_samples', 0)
+                'suspicious_count': 0
             }
-            logger.info(f"Client {client_id} registered")
+            logger.info(f"Client {client_id} successfully registered with Secure Key")
 
-        return {
-            'status': 'initialized',
-            'round': self.round,
-            'client_id': client_id
-        }
+        return {'status': 'registered', 'round': self.round, 'client_id': client_id}, 200
+
+    def verify_signature(self, client_id, payload_bytes, signature_b64):
+        """Verify the digital signature of an update"""
+        if client_id not in self.client_keys:
+            logger.error(f"Unknown client {client_id} attempted update")
+            return False
+
+        try:
+            public_key = self.client_keys[client_id]
+            signature = base64.b64decode(signature_b64)
+            # Ed25519 verification (throws exception if invalid)
+            public_key.verify(signature, payload_bytes)
+            return True
+        except Exception as e:
+            logger.error(f"Signature verification failed for {client_id}: {e}")
+            return False
 
     def process_update(self, client_id, weights, metrics):
         """
@@ -234,8 +262,13 @@ def health():
 @app.route('/init_client', methods=['POST'])
 def init_client():
     data = request.json
-    response = server.register_client(data.get('client_id'), data)
-    return jsonify(response)
+    response = server.register_client(
+        data.get('client_id'),
+        data,
+        data.get('token'),
+        data.get('public_key')
+    )
+    return jsonify(response), status_code
 
 @app.route('/get_model', methods=['POST'])
 def get_model():
@@ -255,15 +288,25 @@ def get_model():
 def submit_update():
     """Receive model update from client"""
     try:
-        data = request.json
-        client_id = data.get('client_id')
-        weights = [np.array(w) for w in data.get('weights')]
-        metrics = {'loss': data.get('loss'), 'accuracy': data.get('accuracy')}
+        # 1. Extraction des données et signature
+        data_json = request.json
+        payload_content = data_json.get('payload') # Contient weights + metrics
+        signature = data_json.get('signature')
+        client_id = payload_content.get('client_id')
 
-        logger.info(f"Received update from {client_id}, size: {len(data.get('weights', []))} layers")
-        update_size.labels(client_id=client_id).observe(sys.getsizeof(request.data))
+        # 2. Reconstruction des bytes pour vérification (doit être identique à l'envoi)
+        # Note: En prod, on signerait le body raw, ici on simplifie
+        payload_bytes = json.dumps(payload_content, sort_keys=True).encode()
 
-        # Process & Analyze Security
+        # 3. VERIFICATION CRYPTOGRAPHIQUE
+        if not server.verify_signature(client_id, payload_bytes, signature):
+            structured_logger.log_error("Invalid Signature", client_id=client_id)
+            return jsonify({'status': 'rejected', 'reason': 'Invalid Signature'}), 401
+
+        # 4. Traitement Métier (si signature valide)
+        weights = [np.array(w) for w in payload_content.get('weights')]
+        metrics = payload_content.get('metrics')
+
         accepted, reason = server.process_update(client_id, weights, metrics)
 
         if accepted:
