@@ -13,7 +13,7 @@
           condition: 'B'
           data:
             - refId: 'A'
-              relativeTimeRange: { from: 60, to: 0 }
+              relativeTimeRange: { from: 300, to: 0 }
               datasourceUid: 'P8E80F9AEF21F6940' # UID de Loki (tel que défini dans datasources.yml)
               model:
                 # Compte le nombre d'attaques par minute
