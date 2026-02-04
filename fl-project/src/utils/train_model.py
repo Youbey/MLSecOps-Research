@@ -26,6 +26,8 @@ import os
 import json
 import numpy as np
 import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers, models
 import argparse
 import logging
 from datetime import datetime
@@ -277,16 +279,16 @@ class ModelTrainer:
         self.model = None
         logger.info(f"Trainer initialized - output: {output_path}")
     
-    def create_model(self) -> tf.keras.Model:
-        """Create LSTM language model"""
-        model = tf.keras.Sequential([
-            tf.keras.layers.Embedding(10000, 100, input_length=3),
-            tf.keras.layers.LSTM(150),
-            tf.keras.layers.Dense(10000, activation='softmax')
+    def create_model(self):
+        """Create LSTM language model using Keras 3 compatible syntax"""
+        model = keras.Sequential([
+            layers.Input(shape=(3,)), 
+            layers.Embedding(input_dim=10000, output_dim=100),
+            layers.LSTM(150),
+            layers.Dense(10000, activation='softmax')
         ])
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        model.build(input_shape=(None, 3))
-        logger.info("Model created: Embedding(10000,100) → LSTM(150) → Dense(10000)")
+        logger.info("Model created: Input(3) → Embedding(10000,100) → LSTM(150) → Dense(10000)")
         return model
     
     def train(self, X: np.ndarray, y: np.ndarray, epochs: int = 5, 
