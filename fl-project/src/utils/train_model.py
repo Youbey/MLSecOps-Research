@@ -58,7 +58,19 @@ class DatasetLoader:
             return None
         
         try:
-            dataset = load_dataset(dataset_name, config)
+            # Map config names to correct names
+            config_map = {
+                'wikitext-2': 'wikitext-2-v1',
+                'wikitext-2-raw': 'wikitext-2-raw-v1',
+                'wikitext-103': 'wikitext-103-v1',
+                'wikitext-103-raw': 'wikitext-103-raw-v1',
+            }
+            
+            # Use mapped config if available
+            actual_config = config_map.get(config, config)
+            logger.info(f"Using config: {actual_config}")
+            
+            dataset = load_dataset(dataset_name, actual_config)
             texts = []
             
             # Get from train split
