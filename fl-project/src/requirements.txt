@@ -10,4 +10,4 @@ cryptography==41.0.0
 protobuf==3.20.3
 pylint==3.0.3
 PyJWT==2.8.0
-keras==3.10.0
+keras==2.13.1

@@ -7,7 +7,8 @@ from datetime import datetime
 from prometheus_client import Counter, Histogram, generate_latest
 import logging
 import sys
-import base64
+import hashlib
+import time
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.primitives import serialization
 
@@ -53,15 +54,12 @@ class FLServer:
         self.client_updates = {}
         self.client_states = {}
         self.rejected_updates = []
-        self.training_history = []
 
-        # Security: Token & Keys
+        # Security: Key Store & Token
+        self.client_keys = {}  # Stocke les clés publiques {client_id: public_key_obj}
         self.registration_token = os.getenv('REGISTRATION_TOKEN', 'default_insecure_token')
-        self.client_keys = {}
-        self.server_private_key = ed25519.Ed25519PrivateKey.generate()
-        self.server_public_key = self.server_private_key.public_key()
 
-        # Detectors
+        # Security Detectors
         self.poisoning_detector = PoisoningDetector() if PoisoningDetector else None
         self.sybil_detector = SybilDetector() if SybilDetector else None
 
@@ -77,19 +75,21 @@ class FLServer:
         model.build(input_shape=(None, 3))
         return model
 
-    def register_client(self, client_id, meta_data, token, public_key_pem):
-        """Register a client securely"""
+    def register_client(self, client_id, meta_data):
+        """Register a new client"""
+        # 1. Vérification du Token (Pre-shared Secret)
         if token != self.registration_token:
             logger.warning(f"Unauthorized registration attempt from {client_id}")
             return {'status': 'rejected', 'reason': 'Invalid Registration Token'}, 403
 
+        # 2. Stockage de la clé publique
         try:
             public_key = serialization.load_pem_public_key(public_key_pem.encode())
             self.client_keys[client_id] = public_key
         except Exception as e:
             logger.error(f"Invalid public key from {client_id}: {e}")
             return {'status': 'rejected', 'reason': 'Invalid Public Key Format'}, 400
-
+        # 3. Initialisation de l'état
         if client_id not in self.client_states:
             self.client_states[client_id] = {
                 'joined_at': datetime.now().isoformat(),
@@ -98,27 +98,18 @@ class FLServer:
             }
             logger.info(f"Client {client_id} successfully registered with Secure Key")
 
-        # Send Server Public Key back
-        server_pub_pem = self.server_public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        ).decode('utf-8')
-
-        return {
-            'status': 'registered',
-            'round': self.round,
-            'client_id': client_id,
-            'server_public_key': server_pub_pem
-        }, 200
+        return {'status': 'registered', 'round': self.round, 'client_id': client_id}, 200
 
     def verify_signature(self, client_id, payload_bytes, signature_b64):
         """Verify the digital signature of an update"""
         if client_id not in self.client_keys:
             logger.error(f"Unknown client {client_id} attempted update")
             return False
+
         try:
             public_key = self.client_keys[client_id]
             signature = base64.b64decode(signature_b64)
+            # Ed25519 verification (throws exception if invalid)
             public_key.verify(signature, payload_bytes)
             return True
         except Exception as e:
@@ -195,8 +186,11 @@ def health():
 @app.route('/init_client', methods=['POST'])
 def init_client():
     data = request.json
-    response, status_code = server.register_client(
-        data.get('client_id'), data, data.get('token'), data.get('public_key')
+    response = server.register_client(
+        data.get('client_id'),
+        data,
+        data.get('token'),
+        data.get('public_key')
     )
     return jsonify(response), status_code
 
@@ -220,17 +214,22 @@ def get_model():
 def submit_update():
     """Receive SIGNED update"""
     try:
+        # 1. Extraction des données et signature
         data_json = request.json
-        payload_content = data_json.get('payload')
+        payload_content = data_json.get('payload') # Contient weights + metrics
         signature = data_json.get('signature')
         client_id = payload_content.get('client_id')
 
+        # 2. Reconstruction des bytes pour vérification (doit être identique à l'envoi)
+        # Note: En prod, on signerait le body raw, ici on simplifie
         payload_bytes = json.dumps(payload_content, sort_keys=True).encode()
 
+        # 3. VERIFICATION CRYPTOGRAPHIQUE
         if not server.verify_signature(client_id, payload_bytes, signature):
             structured_logger.log_error("Invalid Signature", client_id=client_id)
             return jsonify({'status': 'rejected', 'reason': 'Invalid Signature'}), 401
 
+        # 4. Traitement Métier (si signature valide)
         weights = [np.array(w) for w in payload_content.get('weights')]
         metrics = payload_content.get('metrics')
 
