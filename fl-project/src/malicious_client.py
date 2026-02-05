@@ -118,27 +118,34 @@ class MaliciousClient:
         return loss, accuracy
     
     def _should_attack(self):
-        return self.current_round in self.attack_rounds
+        return True
     
     def _attack_poisoning(self, weights):
         """Scale weights massively to dominate aggregation"""
         self.logger.warning(f"⚠ EXECUTING POISONING ATTACK - Round {self.current_round}")
-        weights = np.array(weights, dtype=np.float32)
+        
         gamma = 100.0
-        poisoned = [w * gamma for w in weights]
+        # 1. Multiply the weights
+        # 2. Convert back to list using .tolist() so JSON can read it
+        poisoned = [(np.array(w) * gamma).tolist() for w in weights]
+        
         self.logger.warning(f"⚠ Scaled weights by gamma={gamma}")
         return poisoned
-    
+
     def _attack_stealthy(self, weights):
         """Constrain-and-scale - hide attack in normal magnitude"""
         self.logger.warning(f"⚠ EXECUTING STEALTHY ATTACK - Round {self.current_round}")
-        weights = np.array(weights, dtype=np.float32)
-        mean = np.mean(weights)
-        std = np.std(weights)
-        constrained = [np.random.normal(mean, std * 0.01, w.shape) for w in weights]
+        # Iterate through layers to maintain shapes
+        constrained = []
+        for w in weights:
+            w_arr = np.array(w)
+            mean = np.mean(w_arr)
+            std = np.std(w_arr)
+            constrained.append(np.random.normal(mean, std * 0.01, w_arr.shape))
+        
         self.logger.warning(f"⚠ Applied stealthy constraints")
         return constrained
-    
+  
     def _attack_sybil(self, weights):
         """Create correlated updates simulating multiple clients"""
         self.logger.warning(f"⚠ EXECUTING SYBIL ATTACK - Round {self.current_round}")
@@ -195,12 +202,12 @@ class MaliciousClient:
 
             if response.status_code == 200:
                 if is_poisoned:
-                    self.logger.warning(f"🔴 Poisoned update submitted successfully")
+                    self.logger.warning(f"Poisoned update submitted successfully")
                 else:
-                    self.logger.info(f"✓ Update submitted successfully")
+                    self.logger.info(f"Update submitted successfully")
                 return True
             else:
-                self.logger.error(f"✗ Update rejected: {response.text}")
+                self.logger.warning(f"Update rejected: {response.text}")
                 return False
         except Exception as e:
             self.logger.error(f"Failed to submit update: {e}")
