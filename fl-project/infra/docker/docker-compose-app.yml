@@ -10,14 +10,15 @@ services:
   server:
     build:
       context: ../../
-      dockerfile: infra/docker/Dockerfile
+      dockerfile: fl-project/infra/docker/Dockerfile
     container_name: fl_server
     ports:
       - "5000:5000"
     volumes:
-      - ../../app:/app
-      - ../../scripts:/app/scripts
-      - ../../data:/app/data
+      - ../../fl-project/src:/app/src
+      - ../../fl-project/src/utils:/app/scripts
+      - ../../fl-project/src/data:/app/data
+    working_dir: /app/src
     command: python server.py
     networks:
       - fl_network
@@ -29,16 +30,17 @@ services:
   client_1:
     build:
       context: ../../
-      dockerfile: infra/docker/Dockerfile
+      dockerfile: fl-project/infra/docker/Dockerfile
     container_name: fl_client_1
     environment:
       - CLIENT_ID=client_1
       - SERVER_URL=http://server:5000
       - DATA_FILE=/app/data/client_1_data.json
     volumes:
-      - ../../app:/app
-      - ../../scripts:/app/scripts
-      - ../../data:/app/data
+      - ../../fl-project/src:/app/src
+      - ../../fl-project/src/utils:/app/scripts
+      - ../../fl-project/src/data:/app/data
+    working_dir: /app/src
     command: python client.py
     networks:
       - fl_network
@@ -52,7 +54,7 @@ services:
   malicious_client:
     build:
       context: ../../
-      dockerfile: infra/docker/Dockerfile
+      dockerfile: fl-project/infra/docker/Dockerfile
     container_name: fl_malicious_client
     environment:
       - CLIENT_ID=malicious_client
@@ -60,9 +62,10 @@ services:
       - DATA_FILE=/app/data/malicious_client_data.json
       - ATTACK_MODE=${ATTACK_MODE:-NONE}
     volumes:
-      - ../../app:/app
-      - ../../scripts:/app/scripts
-      - ../../data:/app/data
+      - ../../fl-project/src:/app/src
+      - ../../fl-project/src/utils:/app/scripts
+      - ../../fl-project/src/data:/app/data
+    working_dir: /app/src
     command: python malicious_client.py
     networks:
       - fl_network

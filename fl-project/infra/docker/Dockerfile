@@ -8,15 +8,17 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
+# Copy requirements from the src directory
+COPY fl-project/src/requirements.txt .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY src/ .
-COPY src/utils/ /src/utils/
+COPY fl-project/src/ ./src/
 
-ENV PYTHONPATH="${PYTHONPATH}:/app"
+# Set Python path to include the src directory
+ENV PYTHONPATH="${PYTHONPATH}:/app/src"
 
 # Default to server
-CMD ["python", "server.py"]
+CMD ["python", "src/server.py"]
