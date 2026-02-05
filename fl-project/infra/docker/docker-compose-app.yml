@@ -10,7 +10,7 @@ services:
   server:
     build:
       context: ../../
-      dockerfile: infra/docker/Dockerfile
+      dockerfile: fl-project/infra/docker/Dockerfile
     container_name: fl_server
     ports:
       - "5000:5000"
@@ -32,7 +32,7 @@ services:
   client_1:
     build:
       context: ../../
-      dockerfile: infra/docker/Dockerfile
+      dockerfile: fl-project/infra/docker/Dockerfile
     container_name: fl_client_1
     environment:
       - CLIENT_ID=client_1
@@ -57,7 +57,7 @@ services:
   malicious_client:
     build:
       context: ../../
-      dockerfile: infra/docker/Dockerfile
+      dockerfile: fl-project/infra/docker/Dockerfile
     container_name: fl_malicious_client
     environment:
       - CLIENT_ID=malicious_client
