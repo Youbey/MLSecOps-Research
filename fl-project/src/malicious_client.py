@@ -25,10 +25,16 @@ class MaliciousClient:
         self.current_round = 0
         
         self.logger = logging.getLogger(f"CLIENT-{client_id}")
+        
+        # Create model structure (with random initial weights)
         self.model = self._create_model()
+        
+        # Load training data
         self.training_data = self._load_data(data_file)
         
         self.logger.info(f"Initialized client (attack_mode={attack_mode})")
+        
+        # Register with server and receive initial model weights
         self._register_with_server()
     
     def _create_model(self):
@@ -59,11 +65,25 @@ class MaliciousClient:
                     'num_samples': len(self.training_data[0])
                 }
             )
-            self.logger.info(f"Registered with server")
+            
+            data = response.json()
+            
+            # CRITICAL: Set initial weights from server
+            if 'initial_weights' in data:
+                weights = [np.array(w) for w in data['initial_weights']]
+                self.model.set_weights(weights)
+                self.current_round = data['round']
+                self.logger.info(f"✓ Registered with server and received initial model (round {self.current_round})")
+                self.logger.info(f"✓ Model synchronized with server's global model")
+            else:
+                self.logger.warning("⚠ No initial weights received from server!")
+                self.logger.warning("⚠ Model may not be synchronized!")
+                
         except Exception as e:
             self.logger.error(f"Registration failed: {e}")
     
     def fetch_model(self):
+        """Fetch the latest global model from server before training"""
         try:
             response = requests.post(
                 f'{self.server_url}/get_model',
@@ -73,7 +93,7 @@ class MaliciousClient:
             weights = [np.array(w) for w in data['weights']]
             self.model.set_weights(weights)
             self.current_round = data['round']
-            self.logger.info(f"Fetched model from round {self.current_round}")
+            self.logger.info(f"✓ Fetched latest global model from server (round {self.current_round})")
             return True
         except Exception as e:
             self.logger.error(f"Failed to fetch model: {e}")
@@ -102,37 +122,37 @@ class MaliciousClient:
     
     def _attack_poisoning(self, weights):
         """Scale weights massively to dominate aggregation"""
-        self.logger.warning(f"EXECUTING POISONING ATTACK - Round {self.current_round}")
+        self.logger.warning(f"⚠ EXECUTING POISONING ATTACK - Round {self.current_round}")
         weights = np.array(weights, dtype=np.float32)
         gamma = 100.0
         poisoned = [w * gamma for w in weights]
-        self.logger.warning(f"Scaled weights by gamma={gamma}")
+        self.logger.warning(f"⚠ Scaled weights by gamma={gamma}")
         return poisoned
     
     def _attack_stealthy(self, weights):
         """Constrain-and-scale - hide attack in normal magnitude"""
-        self.logger.warning(f"EXECUTING STEALTHY ATTACK - Round {self.current_round}")
+        self.logger.warning(f"⚠ EXECUTING STEALTHY ATTACK - Round {self.current_round}")
         weights = np.array(weights, dtype=np.float32)
         mean = np.mean(weights)
         std = np.std(weights)
         constrained = [np.random.normal(mean, std * 0.01, w.shape) for w in weights]
-        self.logger.warning(f"Applied stealthy constraints")
+        self.logger.warning(f"⚠ Applied stealthy constraints")
         return constrained
     
     def _attack_sybil(self, weights):
         """Create correlated updates simulating multiple clients"""
-        self.logger.warning(f"EXECUTING SYBIL ATTACK - Round {self.current_round}")
+        self.logger.warning(f"⚠ EXECUTING SYBIL ATTACK - Round {self.current_round}")
         weights = np.array(weights, dtype=np.float32)
         base = [np.random.normal(5.0, 0.5, w.shape) for w in weights]
-        self.logger.warning(f"Created sybil simulation")
+        self.logger.warning(f"⚠ Created sybil simulation")
         return base
     
     def _attack_gradient_inversion(self, weights):
         """Amplify gradients to expose training data"""
-        self.logger.warning(f"EXECUTING GRADIENT INVERSION ATTACK - Round {self.current_round}")
+        self.logger.warning(f"⚠ EXECUTING GRADIENT INVERSION ATTACK - Round {self.current_round}")
         weights = np.array(weights, dtype=np.float32)
         amplified = [w * 20.0 for w in weights]
-        self.logger.warning(f"Amplified gradients for DLG attack")
+        self.logger.warning(f"⚠ Amplified gradients for DLG attack")
         return amplified
     
     def submit_update(self, loss, accuracy):
@@ -140,7 +160,7 @@ class MaliciousClient:
         
         # Check if should attack
         if self.attack_mode != 'NONE' and self._should_attack():
-            self.logger.warning(f"ATTACK TRIGGERED IN ROUND {self.current_round}")
+            self.logger.warning(f"🔴 ATTACK TRIGGERED IN ROUND {self.current_round}")
             
             if self.attack_mode == 'POISONING':
                 weights = self._attack_poisoning(weights)
@@ -175,29 +195,43 @@ class MaliciousClient:
 
             if response.status_code == 200:
                 if is_poisoned:
-                    self.logger.warning(f"Poisoned update submitted successfully")
+                    self.logger.warning(f"🔴 Poisoned update submitted successfully")
                 else:
-                    self.logger.info(f"Update submitted successfully")
+                    self.logger.info(f"✓ Update submitted successfully")
                 return True
             else:
-                self.logger.error(f"Update rejected: {response.text}")
+                self.logger.error(f"✗ Update rejected: {response.text}")
                 return False
         except Exception as e:
             self.logger.error(f"Failed to submit update: {e}")
             return False
     
     def run_training_cycle(self):
-        self.logger.info(f"Starting training cycle")
+        """
+        Complete training cycle:
+        1. Fetch latest global model from server
+        2. Train locally (potentially with poisoned data)
+        3. Submit weight updates (potentially poisoned)
+        """
+        self.logger.info(f"═══ Starting training cycle ═══")
         
+        # STEP 1: Fetch latest global model
+        self.logger.info(f"[1/3] Fetching latest global model...")
         if not self.fetch_model():
+            self.logger.error(f"Failed to fetch model, aborting cycle")
             return False
         
+        # STEP 2: Train locally
+        self.logger.info(f"[2/3] Training locally...")
         loss, accuracy = self.train_locally(epochs=2)
         
+        # STEP 3: Submit update (may be poisoned)
+        self.logger.info(f"[3/3] Submitting update to server...")
         if not self.submit_update(loss, accuracy):
+            self.logger.error(f"Failed to submit update")
             return False
         
-        self.logger.info(f"Training cycle completed")
+        self.logger.info(f"═══ Training cycle completed ═══")
         return True
     
     def wait_for_server_signal(self, timeout=60):
@@ -220,21 +254,23 @@ class MaliciousClient:
 def main():
     client_id = os.getenv('CLIENT_ID', 'malicious_client')
     server_url = os.getenv('SERVER_URL', 'http://localhost:5000')
-    data_file = os.getenv('DATA_FILE', f'/data/{client_id}_data.json')
+    data_file = os.getenv('DATA_FILE', f'data/{client_id}_data.json')
     attack_mode = os.getenv('ATTACK_MODE', 'NONE')
     
     logger = logging.getLogger(f"CLIENT-{client_id}")
     
     # Wait for server to start
+    logger.info("Waiting for server to be ready...")
     for attempt in range(10):
         try:
             requests.get(f'{server_url}/health', timeout=2)
-            logger.info("Server is ready")
+            logger.info("✓ Server is ready")
             break
         except:
             logger.info(f"Waiting for server ({attempt + 1}/10)")
             time.sleep(2)
     
+    # Initialize client (this will sync with server's initial model)
     client = MaliciousClient(client_id, server_url, data_file, attack_mode=attack_mode)
     
     # Main loop: wait for signal, train (potentially with attack), repeat
@@ -242,7 +278,7 @@ def main():
     while True:
         try:
             if client.wait_for_server_signal(timeout=300):
-                logger.info(f"Received training signal from server")
+                logger.info(f"🔔 Received training signal from server")
                 client.run_training_cycle()
             else:
                 logger.debug("No training signal received, waiting...")

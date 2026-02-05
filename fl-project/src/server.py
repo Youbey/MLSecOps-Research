@@ -85,7 +85,16 @@ class FLServer:
             logger.info(f"Client registered: {client_id} ({num_samples} samples)")
             self._log_audit('CLIENT_REGISTERED', {'client_id': client_id, 'num_samples': num_samples})
         
-        return {'status': 'initialized', 'round': self.round, 'client_id': client_id}
+        # SEND INITIAL MODEL WEIGHTS TO CLIENT
+        weights = [w.tolist() for w in self.global_model.get_weights()]
+        logger.info(f"Sending initial model weights to {client_id} (round {self.round})")
+        
+        return {
+            'status': 'initialized',
+            'round': self.round,
+            'client_id': client_id,
+            'initial_weights': weights
+        }
     
     def detect_poisoning(self, client_id, weights, global_weights):
         """Detect poisoning attacks using statistical analysis"""
