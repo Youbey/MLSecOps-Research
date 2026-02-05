@@ -141,36 +141,30 @@ pipeline {
         // =====================================================
         // DYNAMIC: Run selected attack scenario(s)
         // =====================================================
-        
         stage(' Run Attack Scenarios') {
             steps {
-                echo "========== STAGE: Attack Scenarios =========="
                 script {
-                    // Define all attack modes
-                    def attacks = [
-                        'POISONING',
-                        'STEALTHY',
-                        'SYBIL_SIMULATION',
-                        'GRADIENT_INVERSION'
-                    ]
+                    echo "========== STAGE: Run Attack Scenarios ($params.ATTACK_MODE) =========="
                     
                     if (params.ATTACK_MODE == 'ALL_SEQUENTIAL') {
-                        // Run all attacks sequentially
-                        echo " Running ALL attack scenarios sequentially"
-                        attacks.each { attack ->
+                        // Iterate through all actual attack types
+                        def attacks = ['POISONING', 'STEALTHY', 'SYBIL_SIMULATION', 'GRADIENT_INVERSION']
+                        for (attack in attacks) {
                             runAttackScenario(attack)
                         }
-                        // Also run baseline (no attack)
-                        runAttackScenario('NONE')
-                    } else {
-                        // Run single selected attack
-                        echo " Running single attack scenario: ${params.ATTACK_MODE}"
+                    } else if (params.ATTACK_MODE != 'NONE') {
+                        // Run just the one selected in the parameters
                         runAttackScenario(params.ATTACK_MODE)
+                    } else {
+                        echo "No attack selected. Running standard training."
+                        // Still need to trigger training even if it's not an attack
+                        dir('fl-project') {
+                            sh "docker exec fl_server python3 src/utils/control.py --mode train --rounds ${params.FL_ROUNDS} --wait ${params.FL_WAIT}"
+                        }
                     }
                 }
             }
         }
-        
         stage(' Performance Metrics') {
             steps {
                 echo '========== STAGE: Metrics Collection =========='
@@ -265,17 +259,15 @@ def runAttackScenario(String attackMode) {
     dir('fl-project') {
         sh '''
             set -e
-            
-            # FIX: Point to the new APP compose file
+            # Use a more robust sed pattern to ensure we only replace the value after the =
             sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" infra/docker/docker-compose-app.yml
 
-            # FIX: Point to the new APP compose file
-            docker compose -f infra/docker/docker-compose-app.yml up -d --no-deps --build malicious_client
+            # Added --force-recreate to ensure the ENV change is applied
+            docker compose -f infra/docker/docker-compose-app.yml up -d --no-deps --build --force-recreate malicious_client
 
             sleep 5
 
-            # This remains the same
-            docker exec fl_server python3 src/utils/control.py --mode train --rounds ${FL_ROUNDS} --wait ${FL_WAIT}
+            docker exec fl_server python3 src/utils/control.py --mode train --rounds ''' + params.FL_ROUNDS + ''' --wait ''' + params.FL_WAIT + '''
             
             echo " Attack scenario ''' + attackMode + ''' completed"
         '''
