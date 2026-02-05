@@ -1,6 +1,4 @@
-# Use Python 3.10 slim image
 FROM python:3.10-slim
-
 WORKDIR /app
 
 # Install system dependencies
@@ -8,14 +6,16 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY fl-project/src/requirements.txt .
+# 1. Copy requirements from the src folder
+COPY src/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY fl-project/src/ .
+# 2. Copy all source code into /app
+# This puts server.py, client.py, etc., directly in /app
+COPY src/ .
 
-ENV PYTHONPATH="${PYTHONPATH}:/src"
+# 3. Set PYTHONPATH to /app so 'import utils' works
+ENV PYTHONPATH="/app"
 
-# Default to server
+# Default command (overridden by docker-compose)
 CMD ["python", "server.py"]
