@@ -40,37 +40,61 @@ class FLServer:
     
     def _load_or_create_model(self):
         """Load pre-trained model from file, or create new one if not found"""
-        model_path = os.getenv('SERVER_MODEL_PATH', './data/global_model.h5')
+        # Define paths
+        h5_path = os.getenv('SERVER_MODEL_PATH', './data/global_model.h5')
+        json_path = './data/global_model_weights.json' # Your JSON source
         
-        # Try to load pre-trained model
-        if os.path.exists(model_path):
+        # 1. Try JSON first (Most reliable across different environments)
+        if os.path.exists(json_path):
             try:
-                logger.info(f"Loading pre-trained model from {model_path}")
-                model = tf.keras.models.load_model(model_path)
-                logger.info(f"Successfully loaded pre-trained model from {model_path}")
+                logger.info(f"Loading weights from JSON: {json_path}")
+                with open(json_path, 'r') as f:
+                    data = json.load(f)
+                
+                # Create the architecture first
+                model = self._create_model()
+                
+                # Convert list of lists to numpy arrays
+                weights_np = [np.array(w) for w in data['weights']]
+                model.set_weights(weights_np)
+                
+                logger.info("Successfully loaded model weights from JSON")
                 return model
             except Exception as e:
-                logger.warning(f"Failed to load model from {model_path}: {e}")
-                logger.info("Creating new model instead")
-        else:
-            logger.info(f"Model file not found at {model_path}")
-            logger.info("Creating new model from scratch")
+                logger.warning(f"Failed to load from JSON: {e}")
+
+        # 2. Try H5 as fallback
+        if os.path.exists(h5_path):
+            try:
+                logger.info(f"Attempting to load H5 model: {h5_path}")
+                # safe_mode=False helps bypass some Keras 3 metadata strictness
+                model = tf.keras.models.load_model(h5_path, safe_mode=False)
+                logger.info("Successfully loaded H5 model")
+                return model
+            except Exception as e:
+                logger.warning(f"H5 load failed: {e}")
         
-        # Fall back to creating new model
+        # 3. Last resort: Create new
+        logger.info("Creating brand new model from scratch")
         return self._create_model()
-    
+
     def _create_model(self):
-        """Create a new global model (same architecture as clients)"""
+        """Create a new global model with clean Keras 3 architecture"""
         model = tf.keras.Sequential([
-            tf.keras.layers.Embedding(10000, 100, input_length=3),
+            # We remove input_length=3 because it's deprecated in Keras 3
+            # and was causing those warnings in your logs
+            tf.keras.layers.Embedding(10000, 100), 
             tf.keras.layers.LSTM(150),
             tf.keras.layers.Dense(10000, activation='softmax')
         ])
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        
+        # Explicitly build with the expected input shape
         model.build(input_shape=(None, 3))
-        logger.info("Created new model: Embedding(10000, 100) → LSTM(150) → Dense(10000)")
+        
+        logger.info("Created architecture: Embedding(10000, 100) → LSTM(150) → Dense(10000)")
         return model
-    
+ 
     def register_client(self, client_id, num_samples):
         if client_id not in self.client_states:
             self.client_states[client_id] = {
