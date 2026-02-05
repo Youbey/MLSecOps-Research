@@ -16,7 +16,7 @@ services:
       - "5000:5000"
     volumes:
       - ../../fl-project/src:/app/src
-      - ../../fl-project/src/utils:/app/scripts
+      - ../../fl-project/src/utils:/app/src/utils
       - ../../fl-project/src/data:/app/data
     working_dir: /app/src
     command: python server.py
@@ -38,7 +38,7 @@ services:
       - DATA_FILE=/app/data/client_1_data.json
     volumes:
       - ../../fl-project/src:/app/src
-      - ../../fl-project/src/utils:/app/scripts
+      - ../../fl-project/src/utils:/app/src/utils
       - ../../fl-project/src/data:/app/data
     working_dir: /app/src
     command: python client.py
@@ -63,7 +63,7 @@ services:
       - ATTACK_MODE=${ATTACK_MODE:-NONE}
     volumes:
       - ../../fl-project/src:/app/src
-      - ../../fl-project/src/utils:/app/scripts
+      - ../../fl-project/src/utils:/app/src/utils
       - ../../fl-project/src/data:/app/data
     working_dir: /app/src
     command: python malicious_client.py

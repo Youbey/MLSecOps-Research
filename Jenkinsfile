@@ -275,7 +275,7 @@ def runAttackScenario(String attackMode) {
             sleep 5
 
             # This remains the same
-            docker exec fl_server python3 scripts/control.py --mode train --rounds ${FL_ROUNDS} --wait ${FL_WAIT}
+            docker exec fl_server python3 src/utils/control.py --mode train --rounds ${FL_ROUNDS} --wait ${FL_WAIT}
             
             echo " Attack scenario ''' + attackMode + ''' completed"
         '''
