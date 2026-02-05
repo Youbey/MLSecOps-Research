@@ -255,21 +255,22 @@ pipeline {
 // =====================================================
 def runAttackScenario(String attackMode) {
     echo "Running Attack Scenario: $attackMode"
-    
     dir('fl-project') {
-        sh '''
+        sh """
             set -e
-            # Use a more robust sed pattern to ensure we only replace the value after the =
-            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" infra/docker/docker-compose-app.yml
+            
+            # 1. Update the attack mode in the compose file
+            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=${attackMode}/" infra/docker/docker-compose-app.yml
 
-            # Added --force-recreate to ensure the ENV change is applied
-            docker compose -f infra/docker/docker-compose-app.yml up -d --no-deps --build --force-recreate malicious_client
+            # 2. Recreate ONLY the malicious client. 
+            docker compose -f infra/docker/docker-compose-app.yml up -d --no-deps --force-recreate malicious_client
 
             sleep 5
 
-            docker exec fl_server python3 src/utils/control.py --mode train --rounds ''' + params.FL_ROUNDS + ''' --wait ''' + params.FL_WAIT + '''
+            # 4. FIX: Use ${params.FL_ROUNDS} so Jenkins actually passes the value
+            docker exec fl_server python3 utils/control.py --mode train --rounds ${params.FL_ROUNDS} --wait ${params.FL_WAIT}
             
-            echo " Attack scenario ''' + attackMode + ''' completed"
-        '''
+            echo " Attack scenario ${attackMode} completed"
+        """
     }
 }
