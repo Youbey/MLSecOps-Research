@@ -73,11 +73,11 @@ class MaliciousClient:
                 weights = [np.array(w) for w in data['initial_weights']]
                 self.model.set_weights(weights)
                 self.current_round = data['round']
-                self.logger.info(f"✓ Registered with server and received initial model (round {self.current_round})")
-                self.logger.info(f"✓ Model synchronized with server's global model")
+                self.logger.info(f"Registered with server and received initial model (round {self.current_round})")
+                self.logger.info(f"Model synchronized with server's global model")
             else:
-                self.logger.warning("⚠ No initial weights received from server!")
-                self.logger.warning("⚠ Model may not be synchronized!")
+                self.logger.warning("No initial weights received from server!")
+                self.logger.warning("Model may not be synchronized!")
                 
         except Exception as e:
             self.logger.error(f"Registration failed: {e}")
@@ -271,7 +271,7 @@ def main():
     for attempt in range(10):
         try:
             requests.get(f'{server_url}/health', timeout=2)
-            logger.info("✓ Server is ready")
+            logger.info("Server is ready")
             break
         except:
             logger.info(f"Waiting for server ({attempt + 1}/10)")
