@@ -141,7 +141,8 @@ class MaliciousClient:
             w_arr = np.array(w)
             mean = np.mean(w_arr)
             std = np.std(w_arr)
-            constrained.append(np.random.normal(mean, std * 0.01, w_arr.shape))
+            # Convert to list for JSON serialization
+            constrained.append(np.random.normal(mean, std * 0.01, w_arr.shape).tolist())
         
         self.logger.warning(f"⚠ Applied stealthy constraints")
         return constrained
@@ -149,16 +150,26 @@ class MaliciousClient:
     def _attack_sybil(self, weights):
         """Create correlated updates simulating multiple clients"""
         self.logger.warning(f"⚠ EXECUTING SYBIL ATTACK - Round {self.current_round}")
-        weights = np.array(weights, dtype=np.float32)
-        base = [np.random.normal(5.0, 0.5, w.shape) for w in weights]
+        # Create base weights with similar shapes but different values
+        base = []
+        for w in weights:
+            w_arr = np.array(w)
+            # Generate random weights with similar shape
+            base.append(np.random.normal(5.0, 0.5, w_arr.shape).tolist())
+        
         self.logger.warning(f"⚠ Created sybil simulation")
         return base
     
     def _attack_gradient_inversion(self, weights):
         """Amplify gradients to expose training data"""
         self.logger.warning(f"⚠ EXECUTING GRADIENT INVERSION ATTACK - Round {self.current_round}")
-        weights = np.array(weights, dtype=np.float32)
-        amplified = [w * 20.0 for w in weights]
+        # Amplify each weight array
+        amplified = []
+        for w in weights:
+            w_arr = np.array(w)
+            # Amplify by 20x and convert to list
+            amplified.append((w_arr * 20.0).tolist())
+        
         self.logger.warning(f"⚠ Amplified gradients for DLG attack")
         return amplified
     
