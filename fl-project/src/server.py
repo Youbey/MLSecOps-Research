@@ -121,27 +121,69 @@ class FLServer:
         }
     
     def detect_poisoning(self, client_id, weights, global_weights):
-        """Detect poisoning attacks using statistical analysis"""
+        """Detect poisoning attacks using multiple statistical methods"""
         try:
             # Flatten weights for analysis
             client_flat = np.concatenate([w.flatten() for w in weights])
             global_flat = np.concatenate([w.flatten() for w in global_weights])
             
-            # Calculate L2 norm of update
+            # METHOD 1: L2 norm detection (catches large-scale attacks)
             l2_norm = np.linalg.norm(client_flat - global_flat)
+            threshold_l2 = np.linalg.norm(global_flat) * 2.0
             
-            # Calculate statistics
+            # METHOD 2: Cosine similarity (catches direction changes)
+            cosine_sim = np.dot(client_flat, global_flat) / (
+                np.linalg.norm(client_flat) * np.linalg.norm(global_flat) + 1e-8
+            )
+            threshold_cosine = 0.5  # Low similarity = suspicious
+            
+            # METHOD 3: Statistical divergence (catches distribution changes)
             mean_val = np.mean(np.abs(client_flat))
             std_val = np.std(np.abs(client_flat))
+            global_mean = np.mean(np.abs(global_flat))
+            global_std = np.std(np.abs(global_flat))
             
-            # Anomaly detection: if norm is suspiciously large
-            threshold = np.linalg.norm(global_flat) * 2.0
+            mean_ratio = mean_val / (global_mean + 1e-8)
+            std_ratio = std_val / (global_std + 1e-8)
             
-            if l2_norm > threshold:
-                confidence = min(0.95, (l2_norm / threshold) * 0.9)
+            # Suspicious if mean or std deviates significantly
+            threshold_mean_ratio = 1.3  # 30% deviation
+            threshold_std_ratio = 1.5   # 50% deviation
+            
+            # Detect if ANY method triggers
+            detected = False
+            detection_method = []
+            confidence = 0.0
+            
+            if l2_norm > threshold_l2:
+                detected = True
+                detection_method.append("L2_NORM")
+                confidence = max(confidence, min(0.95, (l2_norm / threshold_l2) * 0.9))
+            
+            if cosine_sim < threshold_cosine:
+                detected = True
+                detection_method.append("COSINE_SIMILARITY")
+                confidence = max(confidence, min(0.95, (1 - cosine_sim) * 0.9))
+            
+            if mean_ratio > threshold_mean_ratio or mean_ratio < (1 / threshold_mean_ratio):
+                detected = True
+                detection_method.append("MEAN_DIVERGENCE")
+                confidence = max(confidence, min(0.85, abs(mean_ratio - 1) * 0.8))
+            
+            if std_ratio > threshold_std_ratio or std_ratio < (1 / threshold_std_ratio):
+                detected = True
+                detection_method.append("STD_DIVERGENCE")
+                confidence = max(confidence, min(0.85, abs(std_ratio - 1) * 0.7))
+            
+            if detected:
                 return True, confidence, {
+                    'detection_methods': detection_method,
                     'l2_norm': float(l2_norm),
-                    'threshold': float(threshold),
+                    'l2_threshold': float(threshold_l2),
+                    'cosine_similarity': float(cosine_sim),
+                    'cosine_threshold': float(threshold_cosine),
+                    'mean_ratio': float(mean_ratio),
+                    'std_ratio': float(std_ratio),
                     'mean': float(mean_val),
                     'std': float(std_val)
                 }
