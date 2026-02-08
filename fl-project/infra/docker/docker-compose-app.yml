@@ -17,9 +17,10 @@ services:
     environment:
       - REGISTRATION_TOKEN=NAZIH_IS_THE_GOAT
     volumes:
-      - ../../app:/app
-      - ../../scripts:/app/scripts
-      - ../../data:/app/data
+      - ../../src:/app/src
+      - ../../src/utils:/app/src/utils
+      - ../../src/data:/app/data
+    working_dir: /app/src
     command: python server.py
     networks:
       - fl_network
@@ -39,9 +40,10 @@ services:
       - DATA_FILE=/app/data/client_1_data.json
       - REGISTRATION_TOKEN=NAZIH_IS_THE_GOAT
     volumes:
-      - ../../app:/app
-      - ../../scripts:/app/scripts
-      - ../../data:/app/data
+      - ../../src:/app/src
+      - ../../src/utils:/app/src/utils
+      - ../../src/data:/app/data
+    working_dir: /app/src
     command: python client.py
     networks:
       - fl_network
@@ -64,9 +66,10 @@ services:
       - ATTACK_MODE=${ATTACK_MODE:-NONE}
       - REGISTRATION_TOKEN=NAZIH_IS_THE_GOAT
     volumes:
-      - ../../app:/app
-      - ../../scripts:/app/scripts
-      - ../../data:/app/data
+      - ../../src:/app/src
+      - ../../src/utils:/app/src/utils
+      - ../../src/data:/app/data
+    working_dir: /app/src
     command: python malicious_client.py
     networks:
       - fl_network

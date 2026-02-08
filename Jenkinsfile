@@ -63,22 +63,22 @@ pipeline {
                         sh '''
                         docker run --rm -v $(pwd):/code --user $(id -u):$(id -g) python:3.10-slim sh -c "
                             pip install bandit -q &&
-                            bandit -c /code/qa/bandit.yml -r /code/app -f json -o /code/bandit-report.json --exit-zero
+                            bandit -c /code/qa/bandit.yml -r /code/src -f json -o /code/bandit-report.json --exit-zero
                         "
                         '''
 
                         sh '''
                         docker run --rm -v $(pwd):/src --user $(id -u):$(id -g) returntocorp/semgrep \
                             semgrep scan --config=/src/qa/semgrep-rules.yaml \
-                            --json -o semgrep-report.json --metrics=off /src/app
+                            --json -o semgrep-report.json --metrics=off /src/src
                         '''
                         // 3. Pylint (Scan folder 'app')
                         // the || true, prevents build failaure even if score is low
                         sh '''
                         docker run --rm -v $(pwd):/code --user $(id -u):$(id -g) python:3.10-slim sh -c "
                             pip install pylint flask tensorflow numpy requests prometheus-client -q &&
-                            export PYTHONPATH=/code/app &&
-                            pylint /code/app --output-format=json > /code/pylint-report.json || true
+                            export PYTHONPATH=/code/src &&
+                            pylint /code/src --output-format=json > /code/pylint-report.json || true
                         "
                         '''
 
@@ -112,6 +112,9 @@ pipeline {
                 echo '========== STAGE: Deploy =========='
                 dir('fl-project') {
                     sh '''
+                        # temporary fix for alerts (TO BE REMOVED AFTER FIX)
+                        docker rm -f fl_grafana || true
+
                         # 1. Start Infrastructure (Background, won't restart if running)
                         docker compose -f infra/docker/docker-compose-infra.yml up -d
 
@@ -141,36 +144,30 @@ pipeline {
         // =====================================================
         // DYNAMIC: Run selected attack scenario(s)
         // =====================================================
-        
         stage(' Run Attack Scenarios') {
             steps {
-                echo "========== STAGE: Attack Scenarios =========="
                 script {
-                    // Define all attack modes
-                    def attacks = [
-                        'POISONING',
-                        'STEALTHY',
-                        'SYBIL_SIMULATION',
-                        'GRADIENT_INVERSION'
-                    ]
+                    echo "========== STAGE: Run Attack Scenarios ($params.ATTACK_MODE) =========="
                     
                     if (params.ATTACK_MODE == 'ALL_SEQUENTIAL') {
-                        // Run all attacks sequentially
-                        echo " Running ALL attack scenarios sequentially"
-                        attacks.each { attack ->
+                        // Iterate through all actual attack types
+                        def attacks = ['POISONING', 'STEALTHY', 'SYBIL_SIMULATION', 'GRADIENT_INVERSION']
+                        for (attack in attacks) {
                             runAttackScenario(attack)
                         }
-                        // Also run baseline (no attack)
-                        runAttackScenario('NONE')
-                    } else {
-                        // Run single selected attack
-                        echo " Running single attack scenario: ${params.ATTACK_MODE}"
+                    } else if (params.ATTACK_MODE != 'NONE') {
+                        // Run just the one selected in the parameters
                         runAttackScenario(params.ATTACK_MODE)
+                    } else {
+                        echo "No attack selected. Running standard training."
+                        // Still need to trigger training even if it's not an attack
+                        dir('fl-project') {
+                            sh "docker exec fl_server python3 src/utils/control.py --mode train --rounds ${params.FL_ROUNDS} --wait ${params.FL_WAIT}"
+                        }
                     }
                 }
             }
         }
-        
         stage(' Performance Metrics') {
             steps {
                 echo '========== STAGE: Metrics Collection =========='
@@ -261,23 +258,22 @@ pipeline {
 // =====================================================
 def runAttackScenario(String attackMode) {
     echo "Running Attack Scenario: $attackMode"
-    
     dir('fl-project') {
-        sh '''
+        sh """
             set -e
             
-            # FIX: Point to the new APP compose file
-            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=''' + attackMode + '''/" infra/docker/docker-compose-app.yml
+            # 1. Update the attack mode in the compose file
+            sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=${attackMode}/" infra/docker/docker-compose-app.yml
 
-            # FIX: Point to the new APP compose file
-            docker compose -f infra/docker/docker-compose-app.yml up -d --no-deps --build malicious_client
+            # 2. Recreate ONLY the malicious client. 
+            docker compose -f infra/docker/docker-compose-app.yml up -d --no-deps --force-recreate malicious_client
 
             sleep 5
 
-            # This remains the same
-            docker exec fl_server python3 scripts/control.py --mode train --rounds ${FL_ROUNDS} --wait ${FL_WAIT}
+            # 4. FIX: Use ${params.FL_ROUNDS} so Jenkins actually passes the value
+            docker exec fl_server python3 utils/control.py --mode train --rounds ${params.FL_ROUNDS} --wait ${params.FL_WAIT}
             
-            echo " Attack scenario ''' + attackMode + ''' completed"
-        '''
+            echo " Attack scenario ${attackMode} completed"
+        """
     }
 }

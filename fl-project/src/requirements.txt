@@ -1,0 +1,13 @@
+flask==2.3.0
+flask-cors==4.0.0
+tensorflow==2.16.2
+keras==3.10.0
+numpy==1.24.3
+requests==2.31.0
+python-dotenv==1.0.0
+prometheus-client==0.17.1
+cryptography==41.0.0
+protobuf==3.20.3
+pylint==3.0.3
+PyJWT==2.8.0
+keras==2.13.1

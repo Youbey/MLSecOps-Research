@@ -189,6 +189,7 @@ def main():
     for attempt in range(10):
         try:
             requests.get(f'{server_url}/health', timeout=2)
+            logger.info("Server is up!")
             break
         except:
             time.sleep(2)
