@@ -39,7 +39,7 @@ services:
     image: prom/pushgateway
     container_name: fl_pushgateway
     ports:
-      - "9092:9091" # External 9092, Internal 9091
+      - "9092:9091"
     networks:
       - fl_network
 
@@ -54,5 +54,6 @@ services:
       - ../monitoring/grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
       - ../monitoring/grafana/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
       - ../monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ../monitoring/grafana/provisioning/alerting:/etc/grafana/provisioning/alerting
     networks:
       - fl_network

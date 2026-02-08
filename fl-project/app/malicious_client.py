@@ -8,7 +8,6 @@ Attack Modes:
 4. GRADIENT_INVERSION - High-information gradients
 5. NONE - Behave normally (for comparison)
 """
-
 import os
 import sys
 import json
@@ -17,379 +16,201 @@ import tensorflow as tf
 import requests
 import time
 import logging
+import base64
 from datetime import datetime
 from typing import Literal
-import math
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives import serialization
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(f"MALICIOUS-CLIENT")
 
-# Import structured logger
 try:
     from structured_logger import logger as structured_logger
 except ImportError:
     structured_logger = None
 
 class MaliciousClient:
-    """
-    A compromised FL client that performs attacks instead of honest training
-    """
-    
-    def __init__(self, client_id: str, server_url: str, data_file: str, 
-                 attack_mode: Literal['NONE', 'POISONING', 'STEALTHY', 'SYBIL_SIMULATION', 'GRADIENT_INVERSION'] = 'NONE',
-                 attack_rounds: list = None):
-        """
-        Args:
-            client_id: Unique client identifier
-            server_url: FL server URL
-            data_file: Path to training data
-            attack_mode: Type of attack to perform
-            attack_rounds: Which rounds to attack (e.g., [2, 3, 4])
-        """
+    def __init__(self, client_id, server_url, data_file, attack_mode='NONE'):
         self.client_id = client_id
         self.server_url = server_url
         self.attack_mode = attack_mode
-        self.attack_rounds = attack_rounds or [2, 3, 4, 5]  # Start attacking from round 2
+        self.attack_rounds = [2, 3, 4, 5]
         self.current_round = 0
-        
-        # Setup logging with attack mode
-        logger.name = f"MALICIOUS-{client_id}"
-        logger.info(f" Initialized with attack mode: {attack_mode}")
-        
-        # Create model
+        self.registration_token = os.getenv('REGISTRATION_TOKEN')
+        self.server_public_key = None
+
+        self.private_key = ed25519.Ed25519PrivateKey.generate()
+        self.public_key = self.private_key.public_key()
+
         self.model = self._create_model()
-        
-        # Load data
         self.training_data = self._load_data(data_file)
-        
-        # Register with server
         self._register_with_server()
-    
+
     def _create_model(self):
-        # Match server's vocab size of 10000
         model = tf.keras.Sequential([
             tf.keras.layers.Embedding(10000, 100, input_length=3),
             tf.keras.layers.LSTM(150),
             tf.keras.layers.Dense(10000, activation='softmax')
         ])
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        
-        # Build the model to initialize weights without dummy data
         model.build(input_shape=(None, 3))
-        
         return model
-    
+
     def _load_data(self, data_file):
-        """Load training data from file (Compatible with Medium Article N-Grams)"""
-        with open(data_file, 'r') as f:
-            data = json.load(f)
-        
-        # The data is now a list of sequences [word1, word2, word3, target]
-        data_array = np.array(data)
-        
-        # Split into X (first 3 words) and y (last word)
-        X = data_array[:, :-1]
-        y = data_array[:, -1]
-        
-        logger.info(f"Loaded {len(X)} samples for client {self.client_id}")
-        return X, y
-    
+        try:
+            with open(data_file, 'r') as f:
+                data = json.load(f)
+            data_array = np.array(data)
+            return data_array[:, :-1], data_array[:, -1]
+        except Exception:
+            sys.exit(1)
+
     def _register_with_server(self):
-        """Register with server"""
         try:
-            response = requests.post(
-                f'{self.server_url}/init_client',
-                json={
-                    'client_id': self.client_id,
-                    'num_samples': len(self.training_data[0])
-                }
-            )
-            logger.info(f" Registered with server: {response.json()}")
-        except Exception as e:
-            logger.error(f" Registration failed: {e}")
-    
+            pem = self.public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            ).decode('utf-8')
+
+            payload = {
+                'client_id': self.client_id,
+                'num_samples': len(self.training_data[0]),
+                'public_key': pem,
+                'token': self.registration_token
+            }
+
+            response = requests.post(f'{self.server_url}/init_client', json=payload)
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"Registered (Secure): {data}")
+                if 'server_public_key' in data:
+                    self.server_public_key = serialization.load_pem_public_key(data['server_public_key'].encode())
+            else:
+                sys.exit(1)
+        except Exception:
+            sys.exit(1)
+
     def fetch_model(self):
-        """Download global model from server"""
         try:
-            response = requests.post(
-                f'{self.server_url}/get_model',
-                json={'client_id': self.client_id}
-            )
+            response = requests.post(f'{self.server_url}/get_model', json={'client_id': self.client_id})
             data = response.json()
-            weights = [np.array(w) for w in data['weights']]
+
+            # Verify Signature logic same as client.py
+            if self.server_public_key and 'signature' in data:
+                try:
+                    payload_content = data['payload']
+                    signature = base64.b64decode(data['signature'])
+                    payload_bytes = json.dumps(payload_content, sort_keys=True).encode()
+                    self.server_public_key.verify(signature, payload_bytes)
+                except Exception as e:
+                    logger.warning(f"Server signature invalid: {e}")
+                    # Malicious client might ignore this validation to keep attacking
+
+            model_data = data['payload']
+            weights = [np.array(w) for w in model_data['weights']]
             self.model.set_weights(weights)
-            self.current_round = data['round']
-            logger.info(f" Fetched model from round {self.current_round}")
+            self.current_round = model_data['round']
             return True
-        except Exception as e:
-            logger.error(f" Failed to fetch model: {e}")
+        except Exception:
             return False
-    
+
     def train_locally(self, epochs=2):
-        """Train model locally (honestly)"""
-        logger.info(f" Training locally for {epochs} epochs")
         X, y = self.training_data
-        
-        history = self.model.fit(
-            X, y,
-            epochs=epochs,
-            batch_size=8,
-            verbose=0,
-            validation_split=0.2
-        )
-        
-        loss = float(history.history['loss'][-1])
-        accuracy = float(history.history['accuracy'][-1])
-        
-        logger.info(f" Training complete: loss={loss:.4f}, accuracy={accuracy:.4f}")
-        return loss, accuracy
-    
-    # ============================================
-    # ATTACK IMPLEMENTATIONS
-    # ============================================
-    
-    def _attack_poisoning(self, weights: np.ndarray) -> np.ndarray:
-        """
-        ATTACK 1: Model Replacement / Poisoning
-        
-        Scale weights by γ >> 1 to dominate aggregation
-        γ = 100 means 100x larger than normal
-        """
-        logger.warning(f" ATTACKING: Model Replacement (Poisoning)")
-        
-        weights = np.array(weights, dtype=np.float32)
-        gamma = 100.0  # Scaling factor - try to dominate aggregation
-        
-        # Scale all weights
-        poisoned = weights * gamma
-        
-        logger.warning(f"   Scaled weights by γ={gamma}")
-        logger.warning(f"   Original L2 norm: {np.linalg.norm(weights):.4f}")
-        logger.warning(f"   Poisoned L2 norm: {np.linalg.norm(poisoned):.4f}")
-        
-        return poisoned.tolist()
-    
-    def _attack_stealthy(self, weights: np.ndarray) -> np.ndarray:
-        """
-        ATTACK 2: Constrain-and-Scale (Stealthy)
-        
-        Keep magnitude similar to benign but:
-        - Reduce variance (tight distribution)
-        - Embed backdoor in the pattern
-        """
-        logger.warning(f" ATTACKING: Constrain-and-Scale (Stealthy)")
-        
-        weights = np.array(weights, dtype=np.float32)
-        
-        # Keep the mean but drastically reduce variance
-        mean = np.mean(weights)
-        std = np.std(weights)
-        
-        # Create tightly constrained update
-        constrained = np.random.normal(mean, std * 0.01, weights.shape)
-        
-        logger.warning(f"   Original std: {std:.4f}")
-        logger.warning(f"   Constrained std: {np.std(constrained):.4f}")
-        logger.warning(f"   Looks benign but is stealthy!")
-        
-        return constrained.tolist()
-    
-    def _attack_sybil_simulation(self, weights: np.ndarray) -> np.ndarray:
-        """
-        ATTACK 3: Sybil Simulation
-        
-        This client submits as if it's multiple clients
-        (In real scenario, would control multiple client IDs)
-        
-        Here we just produce highly correlated updates
-        """
-        logger.warning(f" ATTACKING: Sybil Simulation (Correlated)")
-        
-        weights = np.array(weights, dtype=np.float32)
-        
-        # Add tiny noise to base attack (like multiple Sybils)
-        base_attack = np.random.normal(5.0, 0.5, weights.shape)
-        sybil_version = base_attack + np.random.normal(0, 0.01, weights.shape)
-        
-        logger.warning(f"   Creating highly correlated update")
-        logger.warning(f"   L2 norm: {np.linalg.norm(sybil_version):.4f}")
-        
-        return sybil_version.tolist()
-    
-    def _attack_gradient_inversion(self, weights: np.ndarray) -> np.ndarray:
-        """
-        ATTACK 4: Gradient Inversion (Privacy Attack)
-        
-        Submit large, information-rich gradients
-        that expose training data to inversion attacks
-        """
-        logger.warning(f" ATTACKING: Gradient Inversion (Privacy Attack)")
-        
-        weights = np.array(weights, dtype=np.float32)
-        
-        # Amplify to maximize information content
-        info_rich = weights * 20.0
-        
-        logger.warning(f"   Amplifying gradients to maximize information")
-        logger.warning(f"   L2 norm: {np.linalg.norm(info_rich):.4f}")
-        logger.warning(f"   This exposes training data to DLG attack!")
-        
-        return info_rich.tolist()
-    
-    def should_attack(self) -> bool:
-        """Check if should attack this round"""
-        should = self.current_round in self.attack_rounds
-        
-        if should:
-            logger.warning(f" ATTACK ROUND DETECTED: Round {self.current_round} is in attack_rounds")
-        
-        return should
-    
-    def submit_update(self, weights: np.ndarray, loss: float, accuracy: float):
-        """Submit update (potentially poisoned)"""
-        
-        # Check if should attack
-        if self.attack_mode != 'NONE' and self.should_attack():
-            logger.warning(f"\n{'='*70}")
-            logger.warning(f"LAUNCHING ATTACK IN ROUND {self.current_round}")
-            logger.warning(f"Attack Mode: {self.attack_mode}")
-            logger.warning(f"{'='*70}\n")
-            
-            # Log attack via structured logger
+        history = self.model.fit(X, y, epochs=epochs, batch_size=8, verbose=0)
+        return float(history.history['loss'][-1]), float(history.history['accuracy'][-1])
+
+    def _attack_poisoning(self, weights):
+        logger.warning(f"ATTACKING: Poisoning")
+        return (np.array(weights, dtype=np.float32) * 100.0).tolist()
+
+    def submit_update(self, weights, loss, accuracy):
+        # 1. Prepare Payload
+        payload_content = {
+            'client_id': self.client_id,
+            'metrics': {
+                'loss': loss, 'accuracy': accuracy,
+                'timestamp': datetime.now().isoformat(),
+                'attack_type': 'NONE', 'is_poisoned': False
+            },
+            'round': self.current_round
+        }
+
+        # Apply Attack
+        final_weights = weights
+        if self.attack_mode == 'POISONING' and self.current_round in self.attack_rounds:
+            final_weights = self._attack_poisoning(weights)
+            payload_content['metrics']['is_poisoned'] = True
+            payload_content['metrics']['attack_type'] = self.attack_mode
             if structured_logger:
                 structured_logger.log_attack_detected(
-                    attack_type=self.attack_mode,
-                    client_id=self.client_id,
-                    confidence=0.95,
-                    round_number=self.current_round,
-                    evidence={
-                        'source': 'malicious_client',
-                        'loss': float(loss),
-                        'accuracy': float(accuracy)
-                    }
+                    attack_type=self.attack_mode, client_id=self.client_id,
+                    confidence=0.95, round_number=self.current_round
                 )
-            
-            # Apply attack
-            if self.attack_mode == 'POISONING':
-                weights = self._attack_poisoning(weights)
-            elif self.attack_mode == 'STEALTHY':
-                weights = self._attack_stealthy(weights)
-            elif self.attack_mode == 'SYBIL_SIMULATION':
-                weights = self._attack_sybil_simulation(weights)
-            elif self.attack_mode == 'GRADIENT_INVERSION':
-                weights = self._attack_gradient_inversion(weights)
-            
-            # Submit poisoned update
-            payload = {
-                'client_id': self.client_id,
-                'weights': weights,
-                'metrics': {
-                    'loss': loss,
-                    'accuracy': accuracy,
-                    'timestamp': datetime.now().isoformat(),
-                    'is_poisoned': True,  # Mark as poisoned
-                    'attack_type': self.attack_mode
-                }
-            }
         else:
-            # Submit honest update
-            weights_list = [w.tolist() for w in self.model.get_weights()]
-            
-            if structured_logger:
-                structured_logger.log_update_accepted(
-                    client_id=self.client_id,
-                    round_number=self.current_round
-                )
-            
-            payload = {
-                'client_id': self.client_id,
-                'weights': weights_list,
-                'metrics': {
-                    'loss': loss,
-                    'accuracy': accuracy,
-                    'timestamp': datetime.now().isoformat(),
-                    'is_poisoned': False,
-                    'attack_type': 'NONE'
-                }
-            }
-        
-        # Send to server
-        try:
-            response = requests.post(
-                f'{self.server_url}/submit_update',
-                json=payload
-            )
-            
-            size_bytes = len(json.dumps(payload))
-            logger.info(f" Update submitted: {size_bytes} bytes")
-            
-            return True
-        except Exception as e:
-            logger.error(f" Failed to submit update: {e}")
-            return False
-    
-    def run_training_cycle(self):
-        """Run one FL cycle with potential attack"""
-        
-        logger.info(f"\n{'='*70}")
-        logger.info(f"Training Cycle (Round {self.current_round})")
-        logger.info(f"{'='*70}")
-        
-        # Fetch model
-        if not self.fetch_model():
-            return False
-        
-        # Train locally
-        loss, accuracy = self.train_locally(epochs=2)
-        
-        # Get weights
-        weights = np.array(self.model.get_weights(), dtype=object)
-        
-        # Submit (may be poisoned)
-        if not self.submit_update(weights, loss, accuracy):
-            return False
-        
-        logger.info(f" Cycle complete\n")
-        return True
+            final_weights = [w.tolist() for w in weights]
 
+        payload_content['weights'] = final_weights
+
+        # 2. Sign Payload (Required to pass auth)
+        try:
+            payload_bytes = json.dumps(payload_content, sort_keys=True).encode()
+            signature = self.private_key.sign(payload_bytes)
+            signature_b64 = base64.b64encode(signature).decode('utf-8')
+
+            final_packet = {'payload': payload_content, 'signature': signature_b64}
+
+            response = requests.post(f'{self.server_url}/submit_update', json=final_packet)
+            if response.status_code == 200:
+                logger.info(f"Attack payload submitted")
+                return True
+            else:
+                logger.error(f"Attack rejected: {response.text}")
+                return False
+        except Exception as e:
+            logger.error(f"Failed to submit: {e}")
+            return False
+
+    def run_training_cycle(self):
+        logger.info(f"Training Cycle (Round {self.current_round})")
+        if not self.fetch_model(): return False
+        loss, accuracy = self.train_locally(epochs=2)
+        weights = self.model.get_weights()
+        return self.submit_update(weights, loss, accuracy)
 
 def main():
-    """Main entry point"""
-    
-    # Get configuration from environment
     client_id = os.getenv('CLIENT_ID', 'malicious_client')
     server_url = os.getenv('SERVER_URL', 'http://localhost:5000')
     data_file = os.getenv('DATA_FILE', f'/data/{client_id}_data.json')
-    attack_mode = os.getenv('ATTACK_MODE', 'NONE')  # NONE, POISONING, STEALTHY, SYBIL_SIMULATION, GRADIENT_INVERSION
-    
-    logger.info(f" Starting MALICIOUS CLIENT: {client_id}")
-    logger.info(f"   Attack Mode: {attack_mode}")
-    logger.info(f"   Server: {server_url}")
-    
-    # Wait for server
+    attack_mode = os.getenv('ATTACK_MODE', 'NONE')
+
+    logger.info(f"Starting MALICIOUS CLIENT: {client_id} (Mode: {attack_mode})")
+
     for attempt in range(10):
         try:
             requests.get(f'{server_url}/health', timeout=2)
             break
         except:
-            logger.info(f"   Waiting for server... ({attempt + 1}/10)")
             time.sleep(2)
-    
-    # Create malicious client
-    client = MaliciousClient(
-        client_id=client_id,
-        server_url=server_url,
-        data_file=data_file,
-        attack_mode=attack_mode,
-        attack_rounds=[2, 3, 4, 5]  # Attack in rounds 2-5
-    )
-    
-    # Run single training cycle (not continuous)
-    cycle = 1
-    logger.info(f"\n>>> Cycle {cycle}")
-    client.run_training_cycle()
-    logger.info(f" Training complete. Client exiting.")
 
+    client = MaliciousClient(client_id, server_url, data_file, attack_mode)
+
+    last_processed_round = -1
+    while True:
+        try:
+            response = requests.get(f'{server_url}/health', timeout=5)
+            server_round = response.json().get('round', 0)
+
+            if server_round > last_processed_round:
+                client.current_round = server_round
+                if client.run_training_cycle():
+                    last_processed_round = server_round
+                else:
+                    time.sleep(5)
+            else:
+                time.sleep(2)
+        except Exception:
+            time.sleep(5)
 
 if __name__ == '__main__':
     main()
