@@ -18,18 +18,19 @@ pipeline {
                 'GRADIENT_INVERSION',
                 'ALL_SEQUENTIAL'  // Run all attacks one after another
             ],
-            description: 'Attack scenario to test'
+            description: 'Attack scenario to test',
+            defaultValue: 'ALL_SEQUENTIAL'
         )
         
         string(
             name: 'FL_ROUNDS',
-            defaultValue: '5',
+            defaultValue: '1',
             description: 'Number of FL training rounds'
         )
         
         string(
             name: 'FL_WAIT',
-            defaultValue: '15',
+            defaultValue: '100',
             description: 'Wait time between rounds (seconds)'
         )
         
