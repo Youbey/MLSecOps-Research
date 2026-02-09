@@ -20,26 +20,29 @@ logging.basicConfig(
 )
 
 class MaliciousClient:
-    def __init__(self, client_id, server_url, data_file, attack_mode='NONE', attack_rounds=None):
+    def __init__(self, client_id, server_url, data_file, attack_mode='NONE'):
         self.client_id = client_id
         self.server_url = server_url
         self.attack_mode = attack_mode
-        self.attack_rounds = attack_rounds or [2, 3, 4, 5]
         self.current_round = 0
         
         self.logger = logging.getLogger(f"CLIENT-{client_id}")
         
-        # ADDED: Security - Registration token and cryptographic keys
+        # Security - Registration token and cryptographic keys
         self.registration_token = os.getenv('REGISTRATION_TOKEN')
         self.server_public_key = None
         self.private_key = ed25519.Ed25519PrivateKey.generate()
         self.public_key = self.private_key.public_key()
         
-        # Create model structure (with random initial weights)
+        # Create model structure
         self.model = self._create_model()
         
         # Load training data
         self.training_data = self._load_data(data_file)
+        
+        # Attack-specific storage
+        self.intercepted_gradients = []  # For privacy attacks
+        self.attack_history = []
         
         self.logger.info(f"Initialized client (attack_mode={attack_mode})")
         
@@ -135,6 +138,14 @@ class MaliciousClient:
                 self.current_round = data['round']
             
             self.model.set_weights(weights)
+            
+            # PRIVACY ATTACK: Store intercepted weights for analysis
+            if self.attack_mode in ['GRADIENT_INVERSION', 'MEMBERSHIP_INFERENCE', 'PROPERTY_INFERENCE']:
+                self.intercepted_gradients.append({
+                    'round': self.current_round,
+                    'weights': weights
+                })
+            
             self.logger.info(f"✓ Fetched latest global model from server (round {self.current_round})")
             return True
         except Exception as e:
@@ -142,8 +153,14 @@ class MaliciousClient:
             return False
     
     def train_locally(self, epochs=2):
+        """Train locally with potential label flipping attack"""
         self.logger.info(f"Starting local training ({epochs} epochs)")
         X, y = self.training_data
+        
+        # INTEGRITY ATTACK: LABEL_FLIP
+        if self.attack_mode == 'LABEL_FLIP':
+            y = self._attack_label_flip(y)
+            self.logger.warning(f"🔴 LABEL FLIP ATTACK: Flipped labels")
         
         history = self.model.fit(
             X, y,
@@ -159,8 +176,14 @@ class MaliciousClient:
         self.logger.info(f"Training completed - loss={loss:.4f}, accuracy={accuracy:.4f}")
         return loss, accuracy
     
-    def _should_attack(self):
-        return True
+    # ========== INTEGRITY ATTACKS ==========
+    
+    def _attack_label_flip(self, labels):
+        """Flip labels: 0->1, 1->0, etc."""
+        num_classes = int(np.max(labels)) + 1
+        flipped = (labels + 1) % num_classes
+        self.logger.warning(f"Flipped {len(labels)} labels")
+        return flipped
     
     def _attack_poisoning(self, weights):
         """Scale weights massively to dominate aggregation"""
@@ -173,76 +196,172 @@ class MaliciousClient:
         
         self.logger.warning(f"Scaled weights by gamma={gamma}")
         return poisoned
-
-    def _attack_stealthy(self, weights):
-        """Constrain-and-scale - hide attack in normal magnitude but still detectable"""
-        self.logger.warning(f"EXECUTING STEALTHY ATTACK - Round {self.current_round}")
+    
+    def _attack_backdoor(self, weights):
+        """Inject backdoor pattern"""
+        self.logger.warning(f"EXECUTING BACKDOOR ATTACK - Round {self.current_round}")
         
-        # More aggressive 
-        constrained = []
+        # Add small systematic perturbation to specific layers
+        backdoored = []
+        for i, w in enumerate(weights):
+            w_arr = np.array(w)
+            if i == len(weights) - 1:  # Last layer (output layer)
+                # Add backdoor pattern to bias towards specific class
+                trigger_pattern = np.random.uniform(-0.1, 0.1, w_arr.shape)
+                w_backdoor = w_arr + trigger_pattern * 2.0
+            else:
+                w_backdoor = w_arr
+            backdoored.append(w_backdoor.tolist())
+        
+        self.logger.warning(f"Injected backdoor trigger pattern")
+        return backdoored
+    
+    def _attack_gaussian_noise(self, weights):
+        """Add Gaussian noise to gradients"""
+        self.logger.warning(f"EXECUTING GAUSSIAN NOISE ATTACK - Round {self.current_round}")
+        
+        noisy = []
         for w in weights:
             w_arr = np.array(w)
-            mean = np.mean(w_arr)
-            std = np.std(w_arr)
-            # Scale by 1.5 and add controlled noise
-            perturbed = w_arr * 1.5 + np.random.normal(0, std * 0.1, w_arr.shape)
-            constrained.append(perturbed.tolist())
+            noise = np.random.normal(0, np.std(w_arr) * 0.5, w_arr.shape)
+            w_noisy = w_arr + noise
+            noisy.append(w_noisy.tolist())
         
-        self.logger.warning(f"Applied stealthy perturbation (1.5x scale + noise)")
-        return constrained
-  
-    def _attack_sybil(self, weights):
-        """Create correlated updates simulating multiple clients"""
-        self.logger.warning(f"EXECUTING SYBIL ATTACK - Round {self.current_round}")
+        self.logger.warning(f"Added Gaussian noise to weights")
+        return noisy
+    
+    def _attack_sign_flip(self, weights):
+        """Flip the sign of gradients (gradient ascent instead of descent)"""
+        self.logger.warning(f"EXECUTING SIGN FLIP ATTACK - Round {self.current_round}")
         
-        # Create weights that deviate from global model
-        base = []
-        for w in weights:
-            w_arr = np.array(w)
-            # Create significantly different weights to simulate multiple malicious clients
-            # Use 3x scaling to make it detectable
-            perturbed = w_arr * 3.0 + np.random.normal(0, 1.0, w_arr.shape)
-            base.append(perturbed.tolist())
-        
-        self.logger.warning(f"Created sybil simulation (3x scale)")
-        return base
+        flipped = [(np.array(w) * -1.0).tolist() for w in weights]
+        self.logger.warning(f"Flipped gradient signs")
+        return flipped
+    
+    # ========== PRIVACY ATTACKS ==========
     
     def _attack_gradient_inversion(self, weights):
-        """Amplify gradients to expose training data"""
+        """
+        Attempt to reconstruct training data from gradients.
+        This is a simplified simulation - real attack would use optimization.
+        """
         self.logger.warning(f"EXECUTING GRADIENT INVERSION ATTACK - Round {self.current_round}")
         
-        # Amplify each weight array
-        amplified = []
+        # Analyze gradient patterns
+        if len(self.intercepted_gradients) > 1:
+            prev_weights = self.intercepted_gradients[-2]['weights']
+            curr_weights = weights
+            
+            # Compute gradient differences
+            gradient_diffs = []
+            for prev_w, curr_w in zip(prev_weights, curr_weights):
+                diff = np.array(curr_w) - np.array(prev_w)
+                gradient_diffs.append(diff)
+            
+            # Try to infer data characteristics from gradients
+            self.logger.warning(f"Analyzed gradient patterns across {len(self.intercepted_gradients)} rounds")
+            self.attack_history.append({
+                'round': self.current_round,
+                'attack': 'GRADIENT_INVERSION',
+                'gradient_stats': {
+                    'mean': float(np.mean([np.mean(g) for g in gradient_diffs])),
+                    'std': float(np.std([np.std(g) for g in gradient_diffs]))
+                }
+            })
+        
+        return weights  # Don't modify weights for privacy attacks
+    
+    def _attack_membership_inference(self, weights):
+        """
+        Try to infer if specific data was in training set.
+        Monitor loss patterns on specific inputs.
+        """
+        self.logger.warning(f"EXECUTING MEMBERSHIP INFERENCE ATTACK - Round {self.current_round}")
+        
+        # Test model on candidate data points
+        X_test, y_test = self.training_data
+        sample_indices = np.random.choice(len(X_test), min(10, len(X_test)), replace=False)
+        
+        predictions = self.model.predict(X_test[sample_indices], verbose=0)
+        confidences = np.max(predictions, axis=1)
+        
+        self.logger.warning(f"Membership inference on {len(sample_indices)} samples")
+        self.attack_history.append({
+            'round': self.current_round,
+            'attack': 'MEMBERSHIP_INFERENCE',
+            'avg_confidence': float(np.mean(confidences)),
+            'num_samples': len(sample_indices)
+        })
+        
+        return weights
+    
+    def _attack_property_inference(self, weights):
+        """
+        Infer properties of other clients' data distributions.
+        Analyze weight patterns to infer data characteristics.
+        """
+        self.logger.warning(f"EXECUTING PROPERTY INFERENCE ATTACK - Round {self.current_round}")
+        
+        # Analyze weight distribution patterns
+        weight_stats = []
         for w in weights:
             w_arr = np.array(w)
-            # Amplify by 20x and convert to list
-            amplified.append((w_arr * 20.0).tolist())
+            weight_stats.append({
+                'mean': float(np.mean(w_arr)),
+                'std': float(np.std(w_arr)),
+                'min': float(np.min(w_arr)),
+                'max': float(np.max(w_arr))
+            })
         
-        self.logger.warning(f"Amplified gradients by 20x for DLG attack")
-        return amplified
+        self.logger.warning(f"Inferred properties from weight distributions")
+        self.attack_history.append({
+            'round': self.current_round,
+            'attack': 'PROPERTY_INFERENCE',
+            'weight_stats': weight_stats
+        })
+        
+        return weights
     
     def submit_update(self, loss, accuracy):
         weights = [w.tolist() for w in self.model.get_weights()]
+        is_attack = False
+        attack_type = 'NONE'
         
-        # Check if should attack
-        if self.attack_mode != 'NONE' and self._should_attack():
-            self.logger.warning(f"🔴 ATTACK TRIGGERED IN ROUND {self.current_round}")
-            
-            if self.attack_mode == 'POISONING':
-                weights = self._attack_poisoning(weights)
-            elif self.attack_mode == 'STEALTHY':
-                weights = self._attack_stealthy(weights)
-            elif self.attack_mode == 'SYBIL':
-                weights = self._attack_sybil(weights)
-            elif self.attack_mode == 'GRADIENT_INVERSION':
-                weights = self._attack_gradient_inversion(weights)
-            
-            is_poisoned = True
-        else:
-            is_poisoned = False
+        # Apply integrity attacks
+        if self.attack_mode == 'POISONING':
+            weights = self._attack_poisoning(weights)
+            is_attack = True
+            attack_type = 'POISONING'
+        elif self.attack_mode == 'BACKDOOR':
+            weights = self._attack_backdoor(weights)
+            is_attack = True
+            attack_type = 'BACKDOOR'
+        elif self.attack_mode == 'GAUSSIAN_NOISE':
+            weights = self._attack_gaussian_noise(weights)
+            is_attack = True
+            attack_type = 'GAUSSIAN_NOISE'
+        elif self.attack_mode == 'SIGN_FLIP':
+            weights = self._attack_sign_flip(weights)
+            is_attack = True
+            attack_type = 'SIGN_FLIP'
+        
+        # Apply privacy attacks (don't modify weights, just gather info)
+        elif self.attack_mode == 'GRADIENT_INVERSION':
+            self._attack_gradient_inversion(weights)
+            attack_type = 'GRADIENT_INVERSION'
+        elif self.attack_mode == 'MEMBERSHIP_INFERENCE':
+            self._attack_membership_inference(weights)
+            attack_type = 'MEMBERSHIP_INFERENCE'
+        elif self.attack_mode == 'PROPERTY_INFERENCE':
+            self._attack_property_inference(weights)
+            attack_type = 'PROPERTY_INFERENCE'
+        
+        # Label flip is already applied during training
+        if self.attack_mode == 'LABEL_FLIP':
+            is_attack = True
+            attack_type = 'LABEL_FLIP'
         
         try:
-            # MODIFIED: Create signed payload
             payload_content = {
                 'client_id': self.client_id,
                 'weights': weights,
@@ -250,10 +369,10 @@ class MaliciousClient:
                     'loss': loss,
                     'accuracy': accuracy,
                     'timestamp': datetime.now().isoformat(),
-                    'is_poisoned': is_poisoned,
-                    'attack_type': self.attack_mode if is_poisoned else 'NONE'
+                    'is_attack': is_attack,
+                    'attack_type': attack_type
                 },
-                'round': self.current_round  # ADDED
+                'round': self.current_round
             }
             
             # ADDED: Sign the payload (even malicious updates are signed)
@@ -272,8 +391,8 @@ class MaliciousClient:
             )
 
             if response.status_code == 200:
-                if is_poisoned:
-                    self.logger.warning(f"Poisoned update submitted successfully")
+                if is_attack:
+                    self.logger.warning(f"Attack update submitted successfully")
                 else:
                     self.logger.info(f"Update submitted successfully")
                 return True
@@ -328,6 +447,18 @@ class MaliciousClient:
             self.logger.error(f"Error waiting for signal: {e}")
             return False
         return False
+    
+    def save_attack_report(self):
+        """Save attack history to file"""
+        if self.attack_history:
+            report_file = f'/tmp/attack_report_{self.client_id}.json'
+            with open(report_file, 'w') as f:
+                json.dump({
+                    'client_id': self.client_id,
+                    'attack_mode': self.attack_mode,
+                    'attack_history': self.attack_history
+                }, f, indent=2)
+            self.logger.info(f"Attack report saved to {report_file}")
 
 def main():
     client_id = os.getenv('CLIENT_ID', 'malicious_client')
@@ -363,6 +494,7 @@ def main():
                 time.sleep(5)
         except KeyboardInterrupt:
             logger.info("Client shutting down")
+            client.save_attack_report()
             break
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
