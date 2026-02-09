@@ -11,12 +11,19 @@ pipeline {
         choice(
             name: 'ATTACK_MODE',
             choices: [
-                'ALL_SEQUENTIAL',
                 'NONE',
-                'POISONING',
-                'STEALTHY',
-                'SYBIL_SIMULATION',
-                'GRADIENT_INVERSION'
+                'DATA_POISONING',
+                'MODEL_POISONING',
+                'BACKDOOR',
+                'LABEL_FLIP',
+                'GRADIENT_INVERSION',
+                'MEMBERSHIP_INFERENCE',
+                'PROPERTY_INFERENCE',
+                'MODEL_REPLACEMENT',
+                'MALICIOUS_AGGREGATION',
+                'ADVERSARIAL_EXAMPLES',
+                'MODEL_DRIFT',
+                'FREE_RIDING'
             ],
             description: 'Attack scenario to test',
         )
