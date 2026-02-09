@@ -4,395 +4,503 @@ import numpy as np
 import tensorflow as tf
 from flask import Flask, request, jsonify
 from datetime import datetime
-from prometheus_client import Counter, Histogram, generate_latest
 import logging
 import sys
+import threading
 import base64
+from collections import defaultdict
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.primitives import serialization
 
-# Import structured logger
-try:
-    from utils.structured_logger import logger as structured_logger
-except ImportError:
-    class MockLogger:
-        def log(self, *args, **kwargs): pass
-        def log_attack_detected(self, *args, **kwargs): pass
-        def log_attack_rejected(self, *args, **kwargs): pass
-        def log_round_start(self, *args, **kwargs): pass
-        def log_round_end(self, *args, **kwargs): pass
-        def log_error(self, *args, **kwargs): pass
-    structured_logger = MockLogger()
-
-# Import security detectors
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'audit'))
-try:
-    from audit.detect_poisoning import PoisoningDetector
-    from audit.detect_sybil_attacks import SybilDetector
-    print(" Security detectors loaded successfully")
-except ImportError as e:
-    print(f" Warning: Security detectors not available: {e}")
-    PoisoningDetector = None
-    SybilDetector = None
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("FL-Server")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s | %(name)s | %(levelname)s | %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger("SERVER")
 
 app = Flask(__name__)
-
-# Prometheus Metrics
-updates_received = Counter('fl_updates_received', 'Number of model updates received', ['client_id'])
-updates_rejected = Counter('fl_updates_rejected', 'Number of rejected updates', ['client_id', 'reason'])
-training_round = Counter('fl_training_round', 'Training round number')
-attack_detected = Counter('fl_attack_detected', 'Security attacks detected', ['type', 'client_id'])
 
 class FLServer:
     def __init__(self):
         self.round = 0
-        self.global_model = self._create_model()
-        self.client_updates = {}
+        self.max_rounds = int(os.getenv('FL_ROUNDS', 10))
+        self.global_model = self._load_or_create_model()
+        
+        # State management
         self.client_states = {}
-        self.rejected_updates = []
-        self.training_history = []
-
-        # Security: Token & Keys
+        self.client_updates = {}
+        self.waiting_clients = defaultdict(threading.Event)
+        self.round_in_progress = False
+        self.round_lock = threading.Lock()
+        
+        # Audit log
+        self.audit_log = []
+        self.detected_attacks = []
+        
+        # ADDED: Security - Token & Keys
         self.registration_token = os.getenv('REGISTRATION_TOKEN', 'default_insecure_token')
         self.client_keys = {}
         self.server_private_key = ed25519.Ed25519PrivateKey.generate()
         self.server_public_key = self.server_private_key.public_key()
+        
+        logger.info(f"Server initialized for {self.max_rounds} rounds")
+    
+    def _load_or_create_model(self):
+        """Load pre-trained model from file, or create new one if not found"""
+        # Define paths
+        h5_path = os.getenv('SERVER_MODEL_PATH', './data/global_model.h5')
+        json_path = './data/global_model_weights.json' # Your JSON source
+        
+        # 1. Try JSON first (Most reliable across different environments)
+        if os.path.exists(json_path):
+            try:
+                logger.info(f"Loading weights from JSON: {json_path}")
+                with open(json_path, 'r') as f:
+                    data = json.load(f)
+                
+                # Create the architecture first
+                model = self._create_model()
+                
+                # Convert list of lists to numpy arrays
+                weights_np = [np.array(w) for w in data['weights']]
+                model.set_weights(weights_np)
+                
+                logger.info("Successfully loaded model weights from JSON")
+                return model
+            except Exception as e:
+                logger.warning(f"Failed to load from JSON: {e}")
 
-        # Detectors
-        self.poisoning_detector = PoisoningDetector() if PoisoningDetector else None
-        self.sybil_detector = SybilDetector() if SybilDetector else None
-
-        structured_logger.log(event_type="SERVER_START", message="FL Server Initialized (Secure Mode)")
-        logger.info("FL Server initialized with cryptographic security")
+        # 2. Try H5 as fallback
+        if os.path.exists(h5_path):
+            try:
+                logger.info(f"Attempting to load H5 model: {h5_path}")
+                # safe_mode=False helps bypass some Keras 3 metadata strictness
+                model = tf.keras.models.load_model(h5_path, safe_mode=False)
+                logger.info("Successfully loaded H5 model")
+                return model
+            except Exception as e:
+                logger.warning(f"H5 load failed: {e}")
+        
+        # 3. Last resort: Create new
+        logger.info("Creating brand new model from scratch")
+        return self._create_model()
 
     def _create_model(self):
+        """Create a new global model with clean Keras 3 architecture"""
         model = tf.keras.Sequential([
-            tf.keras.layers.Embedding(10000, 100, input_length=3),
+            # We remove input_length=3 because it's deprecated in Keras 3
+            # and was causing those warnings in your logs
+            tf.keras.layers.Embedding(10000, 100), 
             tf.keras.layers.LSTM(150),
             tf.keras.layers.Dense(10000, activation='softmax')
         ])
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        
+        # Explicitly build with the expected input shape
         model.build(input_shape=(None, 3))
+        
+        logger.info("Created architecture: Embedding(10000, 100) → LSTM(150) → Dense(10000)")
         return model
-
-    def register_client(self, client_id, meta_data, token, public_key_pem):
-        """Register a client securely with token and public key"""
-        # Verify registration token
+ 
+    def register_client(self, client_id, num_samples, token=None, public_key_pem=None):
+        # ADDED: Verify registration token
         if token != self.registration_token:
-            logger.warning(f" Unauthorized registration attempt from {client_id}")
+            logger.warning(f"🔴 Unauthorized registration attempt from {client_id}")
             return {'status': 'rejected', 'reason': 'Invalid Registration Token'}, 403
-
-        # Store client's public key
-        try:
-            public_key = serialization.load_pem_public_key(public_key_pem.encode())
-            self.client_keys[client_id] = public_key
-        except Exception as e:
-            logger.error(f"Invalid public key from {client_id}: {e}")
-            return {'status': 'rejected', 'reason': 'Invalid Public Key Format'}, 400
-
-        # Initialize client state
+        
+        # ADDED: Store client's public key
+        if public_key_pem:
+            try:
+                public_key = serialization.load_pem_public_key(public_key_pem.encode())
+                self.client_keys[client_id] = public_key
+                logger.info(f"✓ Client {client_id} public key stored")
+            except Exception as e:
+                logger.error(f"Invalid public key from {client_id}: {e}")
+                return {'status': 'rejected', 'reason': 'Invalid Public Key Format'}, 400
+        
         if client_id not in self.client_states:
             self.client_states[client_id] = {
-                'joined_at': datetime.now().isoformat(),
+                'registered_at': datetime.now().isoformat(),
+                'updates_received': 0,
                 'updates_accepted': 0,
                 'updates_rejected': 0,
-                'suspicious_count': 0
+                'num_samples': num_samples,
+                'last_metrics': None,
+                'attacks_detected': []
             }
-            logger.info(f" Client {client_id} successfully registered with secure key")
-
-        # Send server's public key and initial model weights
+            logger.info(f"Client registered: {client_id} ({num_samples} samples)")
+            self._log_audit('CLIENT_REGISTERED', {'client_id': client_id, 'num_samples': num_samples})
+        
+        # SEND INITIAL MODEL WEIGHTS TO CLIENT
+        weights = [w.tolist() for w in self.global_model.get_weights()]
+        logger.info(f"Sending initial model weights to {client_id} (round {self.round})")
+        
+        # ADDED: Send server's public key
         server_pub_pem = self.server_public_key.public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         ).decode('utf-8')
-
-        initial_weights = [w.tolist() for w in self.global_model.get_weights()]
-
+        
         return {
-            'status': 'registered',
+            'status': 'initialized',
             'round': self.round,
             'client_id': client_id,
-            'server_public_key': server_pub_pem,
-            'initial_weights': initial_weights
+            'initial_weights': weights,
+            'server_public_key': server_pub_pem  # ADDED
         }, 200
-
+    
     def verify_signature(self, client_id, payload_bytes, signature_b64):
-        """Verify the digital signature of an update"""
+        """ADDED: Verify the digital signature of an update"""
         if client_id not in self.client_keys:
-            logger.error(f" Unknown client {client_id} attempted update")
+            logger.error(f"🔴 Unknown client {client_id} attempted update")
             return False
         
         try:
             public_key = self.client_keys[client_id]
             signature = base64.b64decode(signature_b64)
             public_key.verify(signature, payload_bytes)
-            logger.info(f" Signature verified for {client_id}")
+            logger.info(f"✓ Signature verified for {client_id}")
             return True
         except Exception as e:
-            logger.error(f" Signature verification failed for {client_id}: {e}")
+            logger.error(f"🔴 Signature verification failed for {client_id}: {e}")
             return False
-
+    
+    def detect_poisoning(self, client_id, weights, global_weights):
+        """Detect poisoning attacks using multiple statistical methods"""
+        try:
+            # Flatten weights for analysis
+            client_flat = np.concatenate([w.flatten() for w in weights])
+            global_flat = np.concatenate([w.flatten() for w in global_weights])
+            
+            # METHOD 1: L2 norm detection (catches large-scale attacks)
+            l2_norm = np.linalg.norm(client_flat - global_flat)
+            threshold_l2 = np.linalg.norm(global_flat) * 2.0
+            
+            # METHOD 2: Cosine similarity (catches direction changes)
+            cosine_sim = np.dot(client_flat, global_flat) / (
+                np.linalg.norm(client_flat) * np.linalg.norm(global_flat) + 1e-8
+            )
+            threshold_cosine = 0.5  # Low similarity = suspicious
+            
+            # METHOD 3: Statistical divergence (catches distribution changes)
+            mean_val = np.mean(np.abs(client_flat))
+            std_val = np.std(np.abs(client_flat))
+            global_mean = np.mean(np.abs(global_flat))
+            global_std = np.std(np.abs(global_flat))
+            
+            mean_ratio = mean_val / (global_mean + 1e-8)
+            std_ratio = std_val / (global_std + 1e-8)
+            
+            # Suspicious if mean or std deviates significantly
+            threshold_mean_ratio = 1.3  # 30% deviation
+            threshold_std_ratio = 1.5   # 50% deviation
+            
+            # Detect if ANY method triggers
+            detected = False
+            detection_method = []
+            confidence = 0.0
+            
+            if l2_norm > threshold_l2:
+                detected = True
+                detection_method.append("L2_NORM")
+                confidence = max(confidence, min(0.95, (l2_norm / threshold_l2) * 0.9))
+            
+            if cosine_sim < threshold_cosine:
+                detected = True
+                detection_method.append("COSINE_SIMILARITY")
+                confidence = max(confidence, min(0.95, (1 - cosine_sim) * 0.9))
+            
+            if mean_ratio > threshold_mean_ratio or mean_ratio < (1 / threshold_mean_ratio):
+                detected = True
+                detection_method.append("MEAN_DIVERGENCE")
+                confidence = max(confidence, min(0.85, abs(mean_ratio - 1) * 0.8))
+            
+            if std_ratio > threshold_std_ratio or std_ratio < (1 / threshold_std_ratio):
+                detected = True
+                detection_method.append("STD_DIVERGENCE")
+                confidence = max(confidence, min(0.85, abs(std_ratio - 1) * 0.7))
+            
+            if detected:
+                return True, confidence, {
+                    'detection_methods': detection_method,
+                    'l2_norm': float(l2_norm),
+                    'l2_threshold': float(threshold_l2),
+                    'cosine_similarity': float(cosine_sim),
+                    'cosine_threshold': float(threshold_cosine),
+                    'mean_ratio': float(mean_ratio),
+                    'std_ratio': float(std_ratio),
+                    'mean': float(mean_val),
+                    'std': float(std_val)
+                }
+            
+            return False, 0.0, {}
+        except Exception as e:
+            logger.error(f"Error in poisoning detection: {e}")
+            return False, 0.0, {}
+    
     def process_update(self, client_id, weights, metrics):
-        """Process update with Security Analysis"""
-        logger.info(f"Processing update from {client_id}")
-        updates_received.labels(client_id=client_id).inc()
-
-        is_malicious = False
-        rejection_reason = None
-        confidence = 0.0
-
-        # Poisoning Detection
-        if self.poisoning_detector:
-            global_weights = self.global_model.get_weights()
-            analysis = self.poisoning_detector.analyze_update(client_id, weights, global_weights)
-
-            if analysis['is_poisoned']:
-                is_malicious = True
-                rejection_reason = "POISONING_DETECTED"
-                confidence = analysis.get('confidence', 0.95)
-                logger.warning(f" POISONING DETECTED from {client_id} (Conf: {confidence:.2f})")
-
-                structured_logger.log_attack_detected(
-                    attack_type="POISONING", client_id=client_id,
-                    confidence=confidence, details=analysis
-                )
-                attack_detected.labels(type='poisoning', client_id=client_id).inc()
-
-        # Sybil Detection
-        if self.sybil_detector and not is_malicious:
-            # Check for sybil patterns across recent updates
-            sybil_analysis = self.sybil_detector.analyze_updates(
-                self.client_updates, 
-                client_id, 
-                weights
-            )
-            
-            if sybil_analysis.get('is_sybil', False):
-                is_malicious = True
-                rejection_reason = "SYBIL_ATTACK_DETECTED"
-                confidence = sybil_analysis.get('confidence', 0.90)
-                logger.warning(f" SYBIL ATTACK DETECTED involving {client_id} (Conf: {confidence:.2f})")
-                
-                structured_logger.log_attack_detected(
-                    attack_type="SYBIL", client_id=client_id,
-                    confidence=confidence, details=sybil_analysis
-                )
-                attack_detected.labels(type='sybil', client_id=client_id).inc()
-
-        if is_malicious:
-            self.rejected_updates.append({
-                'client_id': client_id, 
-                'reason': rejection_reason, 
+        """Process and analyze client update"""
+        logger.info(f"Processing update from {client_id} (Round {self.round})")
+        
+        self.client_states[client_id]['updates_received'] += 1
+        self.client_states[client_id]['last_metrics'] = metrics
+        
+        # Security analysis
+        global_weights = self.global_model.get_weights()
+        is_poisoned, confidence, detection_details = self.detect_poisoning(client_id, weights, global_weights)
+        
+        # Log the analysis
+        analysis = {
+            'round': self.round,
+            'client_id': client_id,
+            'timestamp': datetime.now().isoformat(),
+            'is_poisoned': is_poisoned,
+            'confidence': float(confidence),
+            'detection_details': detection_details,
+            'metrics': metrics
+        }
+        self._log_audit('UPDATE_ANALYZED', analysis)
+        
+        if is_poisoned:
+            logger.warning(f"ATTACK DETECTED: {client_id} in round {self.round} (confidence={confidence:.2f})")
+            self.detected_attacks.append(analysis)
+            self.client_states[client_id]['attacks_detected'].append({
                 'round': self.round,
-                'timestamp': datetime.now().isoformat(),
-                'confidence': confidence
+                'confidence': confidence,
+                'details': detection_details
             })
-            
             self.client_states[client_id]['updates_rejected'] += 1
-            self.client_states[client_id]['suspicious_count'] += 1
-            
-            structured_logger.log_attack_rejected(
-                attack_type=rejection_reason, 
-                client_id=client_id, 
-                confidence=confidence
-            )
-            updates_rejected.labels(client_id=client_id, reason=rejection_reason).inc()
-            return False, rejection_reason
-
-        # Accept update
-        self.client_updates[client_id] = {'weights': weights, 'metrics': metrics}
+            return False, "POISONING_DETECTED"
+        
+        # Store valid update
+        self.client_updates[client_id] = {
+            'weights': weights,
+            'metrics': metrics,
+            'timestamp': datetime.now()
+        }
         self.client_states[client_id]['updates_accepted'] += 1
-        logger.info(f" Update accepted from {client_id}")
+        logger.info(f"Update accepted from {client_id}")
         return True, "ACCEPTED"
-
+    
     def aggregate_model(self):
-        """Aggregate client updates into global model"""
+        """Aggregate accepted updates using FedAvg"""
         if not self.client_updates:
             logger.warning("No updates to aggregate")
             return False
-
-        logger.info(f"Aggregating {len(self.client_updates)} updates...")
+        
+        logger.info(f"Starting aggregation with {len(self.client_updates)} clients")
+        
         new_weights = [np.zeros_like(w) for w in self.global_model.get_weights()]
-        count = len(self.client_updates)
-
-        # Simple average aggregation
-        for data in self.client_updates.values():
-            for i, w in enumerate(data['weights']):
-                new_weights[i] += w
-
-        new_weights = [w / count for w in new_weights]
+        total_samples = 0
+        
+        for client_id, data in self.client_updates.items():
+            client_weights = data['weights']
+            num_samples = self.client_states[client_id]['num_samples']
+            
+            for i, w in enumerate(client_weights):
+                new_weights[i] += np.array(w) * num_samples
+            total_samples += num_samples
+        
+        # Average
+        new_weights = [w / total_samples for w in new_weights]
         self.global_model.set_weights(new_weights)
-
-        # Record training history
-        self.training_history.append({
+        
+        logger.info(f"Aggregation completed - Round {self.round} finished")
+        self._log_audit('AGGREGATION_COMPLETED', {
             'round': self.round,
-            'num_clients': count,
-            'timestamp': datetime.now().isoformat()
+            'num_updates': len(self.client_updates),
+            'num_attacks_detected': len([a for a in self.detected_attacks if a['round'] == self.round])
         })
-
-        structured_logger.log_round_end(
-            round_number=self.round, 
-            success=True, 
-            num_clients=count
-        )
         
-        logger.info(f" Model aggregated successfully (round {self.round})")
-        
+        # Clear for next round
         self.client_updates.clear()
         self.round += 1
-        training_round.inc()
+        
         return True
+    
+    def signal_clients_for_round(self):
+        """Signal all clients to begin training"""
+        for client_id in self.client_states:
+            self.waiting_clients[client_id].set()
+        logger.info(f"Signaled all clients to begin round {self.round}")
+        self._log_audit('ROUND_STARTED', {'round': self.round, 'num_clients': len(self.client_states)})
+    
+    def reset_client_signals(self):
+        """Reset all client signals for next round"""
+        for client_id in self.client_states:
+            self.waiting_clients[client_id].clear()
+    
+    def _log_audit(self, event_type, data):
+        """Log event to audit trail"""
+        audit_entry = {
+            'timestamp': datetime.now().isoformat(),
+            'event_type': event_type,
+            'data': data
+        }
+        self.audit_log.append(audit_entry)
+    
+    def save_round_report(self):
+        """Save detailed report of current round"""
+        report = {
+            'round': self.round - 1,  # Previous round (now completed)
+            'timestamp': datetime.now().isoformat(),
+            'clients': dict(self.client_states),
+            'attacks_detected': self.detected_attacks,
+            'total_updates_received': sum(c['updates_received'] for c in self.client_states.values()),
+            'total_updates_accepted': sum(c['updates_accepted'] for c in self.client_states.values()),
+            'total_updates_rejected': sum(c['updates_rejected'] for c in self.client_states.values()),
+            'audit_log': self.audit_log
+        }
+        
+        filename = f'/tmp/round_{self.round - 1:02d}_report.json'
+        with open(filename, 'w') as f:
+            json.dump(report, f, indent=2)
+        
+        logger.info(f"Round report saved to {filename}")
+        return filename
 
+# Initialize server
 server = FLServer()
+
+# ==============================================================================
+# FLASK ROUTES
+# ==============================================================================
 
 @app.route('/health', methods=['GET'])
 def health():
-    """Health check endpoint"""
     return jsonify({
-        'status': 'healthy', 
+        'status': 'healthy',
         'round': server.round,
-        'clients': len(server.client_states),
-        'pending_updates': len(server.client_updates)
+        'clients': len(server.client_states)
     })
 
 @app.route('/init_client', methods=['POST'])
 def init_client():
-    """Register a new client with token and public key"""
     data = request.json
+    client_id = data.get('client_id')
+    num_samples = data.get('num_samples', 0)
+    
+    # MODIFIED: Include token and public key
     response, status_code = server.register_client(
-        data.get('client_id'), 
-        data, 
-        data.get('token'), 
-        data.get('public_key')
+        client_id, 
+        num_samples,
+        token=data.get('token'),
+        public_key_pem=data.get('public_key')
     )
     return jsonify(response), status_code
 
 @app.route('/get_model', methods=['POST'])
 def get_model():
-    """Send SIGNED global model to client"""
+    """MODIFIED: Send SIGNED global model weights to client"""
     try:
         weights = [w.tolist() for w in server.global_model.get_weights()]
         payload_content = {
-            'weights': weights, 
+            'weights': weights,
             'round': server.round
         }
-
-        # Sign the payload
+        
+        # ADDED: Sign the payload
         payload_bytes = json.dumps(payload_content, sort_keys=True).encode()
         signature = server.server_private_key.sign(payload_bytes)
         signature_b64 = base64.b64encode(signature).decode('utf-8')
-
+        
         return jsonify({
-            'payload': payload_content, 
+            'payload': payload_content,
             'signature': signature_b64
         })
     except Exception as e:
         logger.error(f"Error sending model: {e}")
-        structured_logger.log_error("Model distribution failed", error=str(e))
         return jsonify({'error': str(e)}), 500
 
 @app.route('/submit_update', methods=['POST'])
 def submit_update():
-    """Receive SIGNED update from client"""
+    """MODIFIED: Receive SIGNED model update from client"""
     try:
-        data_json = request.json
-        payload_content = data_json.get('payload')
-        signature = data_json.get('signature')
-        client_id = payload_content.get('client_id')
-
-        # Verify signature
-        payload_bytes = json.dumps(payload_content, sort_keys=True).encode()
-
-        if not server.verify_signature(client_id, payload_bytes, signature):
-            structured_logger.log_error(
-                "Invalid Signature", 
-                client_id=client_id
-            )
-            return jsonify({
-                'status': 'rejected', 
-                'reason': 'Invalid Signature'
-            }), 401
-
-        # Extract update data
-        weights = [np.array(w) for w in payload_content.get('weights')]
-        metrics = payload_content.get('metrics')
-
-        # Process update with security checks
+        data = request.json
+        
+        # ADDED: Handle signed payload
+        if 'payload' in data and 'signature' in data:
+            payload_content = data['payload']
+            signature = data['signature']
+            client_id = payload_content.get('client_id')
+            
+            # Verify signature
+            payload_bytes = json.dumps(payload_content, sort_keys=True).encode()
+            if not server.verify_signature(client_id, payload_bytes, signature):
+                return jsonify({
+                    'status': 'rejected',
+                    'reason': 'Invalid Signature'
+                }), 401
+            
+            weights = [np.array(w) for w in payload_content.get('weights', [])]
+            metrics = payload_content.get('metrics', {})
+        else:
+            # Backward compatibility: no signature
+            client_id = data.get('client_id')
+            weights = [np.array(w) for w in data.get('weights', [])]
+            metrics = data.get('metrics', {})
+        
+        logger.info(f"Update received from {client_id} ({len(weights)} layers)")
+        
         accepted, reason = server.process_update(client_id, weights, metrics)
         
-        return jsonify({
-            'status': 'accepted' if accepted else 'rejected', 
-            'reason': reason
-        }), 200 if accepted else 403
-
+        if accepted:
+            return jsonify({'status': 'accepted', 'round': server.round})
+        else:
+            return jsonify({'status': 'rejected', 'reason': reason}), 403
+    
     except Exception as e:
         logger.error(f"Error processing update: {e}")
-        structured_logger.log_error("Update processing failed", error=str(e))
         return jsonify({'error': str(e)}), 500
-
-@app.route('/trigger_round', methods=['POST'])
-def trigger_round():
-    """Trigger model aggregation"""
-    structured_logger.log_round_start(server.round)
-    success = server.aggregate_model()
-    return jsonify({
-        'status': 'aggregated' if success else 'skipped', 
-        'round': server.round,
-        'message': 'Model aggregated successfully' if success else 'No updates to aggregate'
-    })
 
 @app.route('/wait_for_round', methods=['POST'])
 def wait_for_round():
-    """Endpoint for clients to wait for training signal"""
-    # Simple implementation - always return ready
-    # In production, this could implement sophisticated signaling
-    return jsonify({'status': 'ready', 'round': server.round}), 200
+    """Client waits here until server signals training round"""
+    data = request.json
+    client_id = data.get('client_id')
+    
+    # Get or create event for this client
+    event = server.waiting_clients[client_id]
+    
+    # Wait for signal (with timeout)
+    signaled = event.wait(timeout=300)
+    
+    if signaled:
+        # Reset the event for next round
+        event.clear()
+        return jsonify({'status': 'go_train', 'round': server.round})
+    else:
+        return jsonify({'status': 'timeout'}), 408
 
-@app.route('/metrics', methods=['GET'])
-def metrics():
-    """Prometheus metrics endpoint"""
-    from prometheus_client import REGISTRY
-    return generate_latest(REGISTRY), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+@app.route('/trigger_round', methods=['POST'])
+def trigger_round():
+    """Trigger a training round - signal all waiting clients"""
+    logger.info(f"Triggering training round {server.round}")
+    server.signal_clients_for_round()
+    return jsonify({'status': 'triggered', 'round': server.round}), 200
 
 @app.route('/status', methods=['GET'])
 def status():
-    """Detailed server status"""
+    """Get detailed server status"""
     return jsonify({
-        'round': server.round, 
-        'clients': server.client_states,
+        'round': server.round,
+        'clients': dict(server.client_states),
         'pending_updates': list(server.client_updates.keys()),
-        'rejected_updates_count': len(server.rejected_updates),
-        'total_clients': len(server.client_states),
-        'security': {
-            'poisoning_detector': 'enabled' if server.poisoning_detector else 'disabled',
-            'sybil_detector': 'enabled' if server.sybil_detector else 'disabled'
-        }
+        'attacks_detected_this_round': len([a for a in server.detected_attacks if a['round'] == server.round]),
+        'total_attacks_detected': len(server.detected_attacks)
     })
 
 @app.route('/security/status', methods=['GET'])
 def security_status():
-    """Security monitoring status"""
+    """Security dashboard"""
     return jsonify({
-        'security_monitoring': 'ACTIVE',
-        'total_attacks_prevented': len(server.rejected_updates),
-        'recent_attacks': server.rejected_updates[-10:] if server.rejected_updates else [],
-        'detectors': {
-            'poisoning': 'enabled' if server.poisoning_detector else 'disabled',
-            'sybil': 'enabled' if server.sybil_detector else 'disabled'
-        }
-    })
-
-@app.route('/security/rejected', methods=['GET'])
-def rejected_updates():
-    """Get list of rejected updates"""
-    return jsonify({
-        'count': len(server.rejected_updates),
-        'updates': server.rejected_updates
+        'monitoring': 'ACTIVE',
+        'total_attacks_detected': len(server.detected_attacks),
+        'attacks': server.detected_attacks
     })
 
 if __name__ == '__main__':
-    logger.info("Starting FL Server on port 5000...")
-    app.run(host='0.0.0.0', port=5000, threaded=True)
+    logger.info("Starting FL Server")
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
