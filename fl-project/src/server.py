@@ -39,7 +39,7 @@ class FLServer:
         self.audit_log = []
         self.detected_attacks = []
         
-        # ADDED: Security - Token & Keys
+        # Security - Token & Keys
         self.registration_token = os.getenv('REGISTRATION_TOKEN', 'default_insecure_token')
         self.client_keys = {}
         self.server_private_key = ed25519.Ed25519PrivateKey.generate()
@@ -71,26 +71,22 @@ class FLServer:
         self.weight_history = []
         self.client_access_count = defaultdict(int)
         
-        logger.info(f"Server initialized for {self.max_rounds} rounds")
+        logger.info(f" FL Server initialized for {self.max_rounds} rounds")
         logger.info(f"Detection enabled: Integrity + Privacy attacks")
     
     def _load_or_create_model(self):
         """Load pre-trained model from file, or create new one if not found"""
-        # Define paths
         h5_path = os.getenv('SERVER_MODEL_PATH', './data/global_model.h5')
         json_path = './data/global_model_weights.json'
         
-        # 1. Try JSON first (Most reliable across different environments)
+        # Try JSON first
         if os.path.exists(json_path):
             try:
                 logger.info(f"Loading weights from JSON: {json_path}")
                 with open(json_path, 'r') as f:
                     data = json.load(f)
                 
-                # Create the architecture first
                 model = self._create_model()
-                
-                # Convert list of lists to numpy arrays
                 weights_np = [np.array(w) for w in data['weights']]
                 model.set_weights(weights_np)
                 
@@ -361,6 +357,199 @@ class FLServer:
             logger.error(f"Error in backdoor detection: {e}")
             return False, 0.0, {}
     
+    def detect_model_replacement(self, client_id, weights, global_weights):
+        """
+        Detect MODEL_REPLACEMENT attacks.
+        Check if entire model structure differs significantly from global.
+        """
+        try:
+            # Check if ALL layers diverge significantly
+            all_divergent = True
+            divergence_scores = []
+            
+            for client_w, global_w in zip(weights, global_weights):
+                client_arr = np.array(client_w).flatten()
+                global_arr = np.array(global_w).flatten()
+                
+                # Compute correlation
+                correlation = np.corrcoef(client_arr, global_arr)[0, 1]
+                divergence_scores.append(1 - correlation)  # Higher = more divergent
+            
+            # If all layers are divergent, likely model replacement
+            avg_divergence = np.mean(divergence_scores)
+            
+            if avg_divergence > 0.7:  # 70% divergence across all layers
+                return True, 0.90, {
+                    'avg_divergence': float(avg_divergence),
+                    'layer_divergences': [float(d) for d in divergence_scores],
+                    'detection': 'Entire model structure divergent (model replacement)'
+                }
+            
+            return False, 0.0, {}
+        except Exception as e:
+            logger.error(f"Error in model replacement detection: {e}")
+            return False, 0.0, {}
+    
+    def detect_malicious_aggregation(self, client_id, weights, global_weights):
+        """
+        Detect MALICIOUS_AGGREGATION attacks.
+        Check for carefully crafted updates designed to exploit averaging.
+        """
+        try:
+            client_flat = np.concatenate([w.flatten() for w in weights])
+            global_flat = np.concatenate([w.flatten() for w in global_weights])
+            
+            # Check if update has unusual directionality
+            diff = client_flat - global_flat
+            
+            # Compute entropy of differences (uniform direction = low entropy)
+            hist, _ = np.histogram(diff, bins=50)
+            hist = hist / (np.sum(hist) + 1e-8)
+            entropy = -np.sum(hist * np.log(hist + 1e-8))
+            
+            # Low entropy = coordinated attack
+            if entropy < 2.5:
+                return True, 0.75, {
+                    'entropy': float(entropy),
+                    'detection': 'Low-entropy directional update (malicious aggregation)'
+                }
+            
+            return False, 0.0, {}
+        except Exception as e:
+            logger.error(f"Error in malicious aggregation detection: {e}")
+            return False, 0.0, {}
+    
+    def detect_model_drift(self, client_id, weights):
+        """
+        Detect MODEL_DRIFT attacks.
+        Track if client consistently deviates in same direction over rounds.
+        """
+        try:
+            # Need historical data
+            if len(self.weight_history) < 3:
+                return False, 0.0, {}
+            
+            # Get client's last 3 updates
+            client_updates = []
+            for hist in self.weight_history[-3:]:
+                if client_id in hist:
+                    client_updates.append(hist[client_id])
+            
+            if len(client_updates) < 3:
+                return False, 0.0, {}
+            
+            # Compute directions of changes
+            directions = []
+            for i in range(len(client_updates) - 1):
+                curr = np.concatenate([np.array(w).flatten() for w in client_updates[i]])
+                next_w = np.concatenate([np.array(w).flatten() for w in client_updates[i+1]])
+                direction = next_w - curr
+                direction = direction / (np.linalg.norm(direction) + 1e-8)
+                directions.append(direction)
+            
+            # Check if directions are consistent (drift)
+            if len(directions) >= 2:
+                similarity = np.dot(directions[0], directions[1])
+                if similarity > 0.9:  # Very consistent direction
+                    return True, 0.70, {
+                        'direction_similarity': float(similarity),
+                        'detection': 'Consistent directional drift across rounds'
+                    }
+            
+            return False, 0.0, {}
+        except Exception as e:
+            logger.error(f"Error in drift detection: {e}")
+            return False, 0.0, {}
+    
+    def detect_free_riding(self, client_id, weights, global_weights):
+        """
+        Detect FREE_RIDING attacks.
+        Check if updates are suspiciously minimal/fake.
+        """
+        try:
+            client_flat = np.concatenate([w.flatten() for w in weights])
+            global_flat = np.concatenate([w.flatten() for w in global_weights])
+            
+            # Compute magnitude of update
+            update_magnitude = np.linalg.norm(client_flat - global_flat)
+            global_magnitude = np.linalg.norm(global_flat)
+            
+            # Relative update size
+            relative_update = update_magnitude / (global_magnitude + 1e-8)
+            
+            # If update is suspiciously tiny (< 0.001% of model)
+            if relative_update < 0.00001:
+                return True, 0.65, {
+                    'relative_update_size': float(relative_update),
+                    'detection': 'Suspiciously minimal update (free-riding)'
+                }
+            
+            return False, 0.0, {}
+        except Exception as e:
+            logger.error(f"Error in free-riding detection: {e}")
+            return False, 0.0, {}
+    
+    def detect_data_poisoning(self, client_id, metrics):
+        """
+        Detect DATA_POISONING attacks.
+        Check for unusual training metrics that indicate corrupted data.
+        """
+        try:
+            if 'loss' not in metrics or 'accuracy' not in metrics:
+                return False, 0.0, {}
+            
+            loss = metrics['loss']
+            accuracy = metrics['accuracy']
+            
+            # Suspiciously high loss or low accuracy
+            if loss > 10.0 or accuracy < 0.01:
+                return True, 0.75, {
+                    'loss': loss,
+                    'accuracy': accuracy,
+                    'detection': 'Abnormal training metrics (data poisoning)'
+                }
+            
+            return False, 0.0, {}
+        except Exception as e:
+            logger.error(f"Error in data poisoning detection: {e}")
+            return False, 0.0, {}
+    
+    def detect_adversarial_examples(self, client_id, weights, global_weights):
+        """
+        Detect ADVERSARIAL_EXAMPLES in training.
+        Similar to noise detection but with specific patterns.
+        """
+        try:
+            client_flat = np.concatenate([w.flatten() for w in weights])
+            global_flat = np.concatenate([w.flatten() for w in global_weights])
+            
+            diff = client_flat - global_flat
+            
+            # Adversarial examples create specific high-frequency patterns
+            # Check for unusual variance patterns
+            chunk_size = 1000
+            chunk_vars = []
+            for i in range(0, len(diff), chunk_size):
+                chunk = diff[i:i+chunk_size]
+                if len(chunk) > 0:
+                    chunk_vars.append(np.var(chunk))
+            
+            if len(chunk_vars) > 1:
+                var_of_vars = np.var(chunk_vars)
+                mean_var = np.mean(chunk_vars)
+                
+                # High variance of variances indicates adversarial patterns
+                if var_of_vars / (mean_var + 1e-8) > 5.0:
+                    return True, 0.70, {
+                        'variance_ratio': float(var_of_vars / (mean_var + 1e-8)),
+                        'detection': 'High-frequency variance patterns (adversarial examples)'
+                    }
+            
+            return False, 0.0, {}
+        except Exception as e:
+            logger.error(f"Error in adversarial examples detection: {e}")
+            return False, 0.0, {}
+    
     # ========== PRIVACY ATTACK DETECTION ==========
     
     def detect_gradient_inversion(self, client_id):
@@ -471,6 +660,66 @@ class FLServer:
         if is_backdoor:
             detected_attacks.append({
                 'type': 'BACKDOOR',
+                'confidence': conf,
+                'details': details
+            })
+            total_confidence = max(total_confidence, conf)
+        
+        # NEW: MODEL_REPLACEMENT detection
+        is_replacement, conf, details = self.detect_model_replacement(client_id, weights, global_weights)
+        if is_replacement:
+            detected_attacks.append({
+                'type': 'MODEL_REPLACEMENT',
+                'confidence': conf,
+                'details': details
+            })
+            total_confidence = max(total_confidence, conf)
+        
+        # NEW: MALICIOUS_AGGREGATION detection
+        is_mal_agg, conf, details = self.detect_malicious_aggregation(client_id, weights, global_weights)
+        if is_mal_agg:
+            detected_attacks.append({
+                'type': 'MALICIOUS_AGGREGATION',
+                'confidence': conf,
+                'details': details
+            })
+            total_confidence = max(total_confidence, conf)
+        
+        # NEW: MODEL_DRIFT detection
+        is_drift, conf, details = self.detect_model_drift(client_id, weights)
+        if is_drift:
+            detected_attacks.append({
+                'type': 'MODEL_DRIFT',
+                'confidence': conf,
+                'details': details
+            })
+            total_confidence = max(total_confidence, conf)
+        
+        # NEW: FREE_RIDING detection
+        is_free_ride, conf, details = self.detect_free_riding(client_id, weights, global_weights)
+        if is_free_ride:
+            detected_attacks.append({
+                'type': 'FREE_RIDING',
+                'confidence': conf,
+                'details': details
+            })
+            total_confidence = max(total_confidence, conf)
+        
+        # NEW: DATA_POISONING detection
+        is_data_poison, conf, details = self.detect_data_poisoning(client_id, metrics)
+        if is_data_poison:
+            detected_attacks.append({
+                'type': 'DATA_POISONING',
+                'confidence': conf,
+                'details': details
+            })
+            total_confidence = max(total_confidence, conf)
+        
+        # NEW: ADVERSARIAL_EXAMPLES detection
+        is_adv_examples, conf, details = self.detect_adversarial_examples(client_id, weights, global_weights)
+        if is_adv_examples:
+            detected_attacks.append({
+                'type': 'ADVERSARIAL_EXAMPLES',
                 'confidence': conf,
                 'details': details
             })
@@ -771,5 +1020,5 @@ def security_status():
     })
 
 if __name__ == '__main__':
-    logger.info("Starting Advanced FL Server with Multi-Attack Detection")
+    logger.info("Starting FL Server with Multi-Attack Detection")
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
