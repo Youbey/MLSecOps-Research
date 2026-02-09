@@ -11,15 +11,14 @@ pipeline {
         choice(
             name: 'ATTACK_MODE',
             choices: [
+                'ALL_SEQUENTIAL',
                 'NONE',
                 'POISONING',
                 'STEALTHY',
                 'SYBIL_SIMULATION',
-                'GRADIENT_INVERSION',
-                'ALL_SEQUENTIAL'  // Run all attacks one after another
+                'GRADIENT_INVERSION'
             ],
             description: 'Attack scenario to test',
-            defaultValue: 'ALL_SEQUENTIAL'
         )
         
         string(
