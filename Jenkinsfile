@@ -162,7 +162,7 @@ pipeline {
                         echo "No attack selected. Running standard training."
                         // Still need to trigger training even if it's not an attack
                         dir('fl-project') {
-                            sh "docker exec fl_server python3 src/utils/control.py --mode train --rounds ${params.FL_ROUNDS} --wait ${params.FL_WAIT}"
+                            sh "docker exec fl_server python3 utils/control.py --mode train --rounds ${params.FL_ROUNDS} --wait ${params.FL_WAIT}"
                         }
                     }
                 }
