@@ -11,21 +11,27 @@ pipeline {
         choice(
             name: 'ATTACK_MODE',
             choices: [
-                'ALL_SEQUENTIAL',
-                'DATA_POISONING',
-                'MODEL_POISONING',
-                'BACKDOOR',
-                'LABEL_FLIP',
-                'GRADIENT_INVERSION',
-                'MEMBERSHIP_INFERENCE',
-                'PROPERTY_INFERENCE',
-                'MODEL_REPLACEMENT',
-                'MALICIOUS_AGGREGATION',
-                'ADVERSARIAL_EXAMPLES',
-                'MODEL_DRIFT',
-                'FREE_RIDING'
-            ],
-            description: 'Attack scenario to test',
+                    'ALL_SEQUENTIAL',
+                    'NONE',
+                    'POISONING',
+                    'MODEL_POISONING',
+                    'DATA_POISONING',
+                    'BACKDOOR',
+                    'LABEL_FLIP',
+                    'STEALTHY',
+                    'SYBIL_SIMULATION',
+                    'GRADIENT_INVERSION',
+                    'MEMBERSHIP_INFERENCE',
+                    'PROPERTY_INFERENCE',
+                    'MODEL_REPLACEMENT',
+                    'MALICIOUS_AGGREGATION',
+                    'ADVERSARIAL_EXAMPLES',
+                    'MODEL_DRIFT',
+                    'FREE_RIDING',
+                    'SIGN_FLIP',
+                    'GAUSSIAN_NOISE'
+                ],
+                description: 'Attack scenario to test'
         )
         
         string(
@@ -158,7 +164,25 @@ pipeline {
                     
                     if (params.ATTACK_MODE == 'ALL_SEQUENTIAL') {
                         // Iterate through all actual attack types
-                        def attacks = ['POISONING', 'STEALTHY', 'SYBIL_SIMULATION', 'GRADIENT_INVERSION']
+                        def attacks = [
+                                'POISONING',
+                                'MODEL_POISONING',
+                                'DATA_POISONING',
+                                'BACKDOOR',
+                                'LABEL_FLIP',
+                                'STEALTHY',
+                                'SYBIL_SIMULATION',
+                                'GRADIENT_INVERSION',
+                                'MEMBERSHIP_INFERENCE',
+                                'PROPERTY_INFERENCE',
+                                'MODEL_REPLACEMENT',
+                                'MALICIOUS_AGGREGATION',
+                                'ADVERSARIAL_EXAMPLES',
+                                'MODEL_DRIFT',
+                                'FREE_RIDING',
+                                'SIGN_FLIP',
+                                'GAUSSIAN_NOISE'
+                            ];
                         for (attack in attacks) {
                             runAttackScenario(attack)
                         }
