@@ -11,7 +11,7 @@ pipeline {
         choice(
             name: 'ATTACK_MODE',
             choices: [
-                'NONE',
+                'ALL_SEQUENTIAL',
                 'DATA_POISONING',
                 'MODEL_POISONING',
                 'BACKDOOR',
