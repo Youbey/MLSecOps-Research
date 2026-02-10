@@ -173,7 +173,7 @@ class FLController:
                 continue
             
             # Print round summary
-            total_received = sum(c['updates_received'] for c in status['clients'].values())
+            total_received = sum(c.get('updates_accepted', 0) for c in status['clients'].values())
             total_accepted = sum(c['updates_accepted'] for c in status['clients'].values())
             total_rejected = sum(c['updates_rejected'] for c in status['clients'].values())
             
