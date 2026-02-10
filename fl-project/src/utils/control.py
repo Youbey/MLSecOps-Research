@@ -136,7 +136,7 @@ class FLController:
         except Exception as e:
             logger.error(f"Error triggering round: {e}")
         return False
-    
+
     def run_training_sequence(self, num_rounds=5, wait_time=60):
         """
         Full training sequence:
@@ -145,56 +145,58 @@ class FLController:
         3. Repeat
         """
         logger.info(f"Starting training sequence for {num_rounds} rounds")
-        
+
         for round_num in range(1, num_rounds + 1):
             logger.info(f"ROUND {round_num}/{num_rounds}")
             print("="*70)
-            
+
             # Get status before round
             status = self.get_status()
             if not status:
                 logger.error("Could not get status")
                 continue
-            
+
             current_round = status['round']
             logger.info(f"Triggering round {current_round} - signaling clients to train")
-            
+
             # Signal server to trigger training
             self.signal_training_round()
-            
+
             # Wait for updates
             logger.info(f"Waiting {wait_time}s for client updates...")
             time.sleep(wait_time)
-            
+
             # Check status
             status = self.get_status()
             if not status:
                 logger.error("Could not get status")
                 continue
-            
-            # Print round summary
-            total_received = sum(c.get('updates_accepted', 0) for c in status['clients'].values())
-            total_accepted = sum(c['updates_accepted'] for c in status['clients'].values())
-            total_rejected = sum(c['updates_rejected'] for c in status['clients'].values())
-            
+
+            # Print round summary - UTILISATION DE .get() POUR ÉVITER LES CRASH
+            total_received = sum(c.get('updates_received', 0) for c in status['clients'].values())
+            total_accepted = sum(c.get('updates_accepted', 0) for c in status['clients'].values())
+            total_rejected = sum(c.get('updates_rejected', 0) for c in status['clients'].values())
+
             logger.info(f"Round {current_round} Summary:")
             logger.info(f"  - Updates received: {total_received}")
             logger.info(f"  - Updates accepted: {total_accepted}")
             logger.info(f"  - Updates rejected: {total_rejected}")
-            
-            if status['attacks_detected_this_round'] > 0:
+
+            if status.get('attacks_detected_this_round', 0) > 0:
                 logger.warning(f"  - ATTACKS DETECTED: {status['attacks_detected_this_round']}")
-                
+
                 # Print which clients were detected
                 for client_id, state in status['clients'].items():
-                    if state['attacks_detected']:
-                        for attack in state['attacks_detected']:
-                            if attack['round'] == current_round:
-                                logger.warning(f"    {client_id} (confidence={attack['confidence']:.2f})")
-            
+                    # Check keys safely
+                    attacks = state.get('attacks_detected', [])
+                    if attacks:
+                        for attack in attacks:
+                            if attack.get('round') == current_round:
+                                logger.warning(f"    {client_id} (confidence={attack.get('confidence', 0):.2f})")
+
             logger.info(f"Round {current_round} completed")
             time.sleep(2)
-        
+
         logger.info(f"Training sequence completed {num_rounds} rounds")
         self.print_status()
 

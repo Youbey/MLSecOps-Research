@@ -92,9 +92,12 @@ class FLServer:
 
         if client_id not in self.client_states:
             self.client_states[client_id] = {
-                'joined_at': datetime.now().isoformat(),
+                'registered_at': datetime.now().isoformat(),
+                'updates_received': 0,
                 'updates_accepted': 0,
-                'suspicious_count': 0
+                'updates_rejected': 0,
+                'last_metrics': None,
+                'attacks_detected': []
             }
             logger.info(f"Client {client_id} successfully registered with Secure Key")
 
