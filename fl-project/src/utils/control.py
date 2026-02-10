@@ -206,10 +206,9 @@ class FLController:
     def trigger_aggregation(self):
         """Signal the server to aggregate updates"""
         try:
-            # Assuming the endpoint is /aggregate
-            response = requests.post(f'{self.server_url}/aggregate')
+            response = requests.post(f'{self.server_url}/trigger_aggregation')
             if response.status_code == 200:
-                logger.info("✓ Aggregation triggered")
+                logger.info("Aggregation triggered")
                 return True
             else:
                 logger.error(f"Failed to aggregate: {response.text}")
