@@ -775,10 +775,9 @@ class FLServer:
             'metrics': metrics
         })
         
-        # AUTO-AGGREGATE: If we have updates from all registered clients, aggregate immediately
-        if len(self.client_updates) == len(self.client_states):
-            logger.info(f"🎯 Received updates from all {len(self.client_states)} clients - triggering aggregation")
-            self.aggregate_updates()
+        # Note: Aggregation is triggered manually via control.py in the test workflow
+        # Auto-aggregation is disabled to allow manual control of training rounds
+        logger.info(f"✓ Update accepted from {client_id} ({len(self.client_updates)}/{len(self.client_states)} received)")
         
         return True, "Accepted"
     
@@ -1035,6 +1034,15 @@ def trigger_round():
     server.signal_clients_for_round()
     logger.info(f"✓ All {len(server.client_states)} clients signaled to start training")
     return jsonify({'status': 'triggered', 'round': server.round}), 200
+
+@app.route('/trigger_aggregation', methods=['POST'])
+def trigger_aggregation():
+    """Manually trigger model aggregation"""
+    logger.info("📊 Manual aggregation triggered")
+    if server.aggregate_updates():
+        return jsonify({'status': 'aggregated', 'round': server.round}), 200
+    else:
+        return jsonify({'status': 'no_updates', 'round': server.round}), 200
 
 @app.route('/reset_round', methods=['POST'])
 def reset_round():

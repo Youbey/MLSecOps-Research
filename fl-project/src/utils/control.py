@@ -144,8 +144,21 @@ class FLController:
     
     def trigger_aggregation(self):
         """Trigger model aggregation at the server"""
-        logger.info("Aggregation complete (clients' updates have been processed)")
-        return True
+        try:
+            response = requests.post(
+                f'{self.server_url}/trigger_aggregation',
+                timeout=5
+            )
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"✓ Aggregation triggered - now at round {data['round']}")
+                return True
+            else:
+                logger.error(f"Failed to trigger aggregation: {response.status_code}")
+                return False
+        except Exception as e:
+            logger.error(f"Error triggering aggregation: {e}")
+            return False
     
     def reset_round(self):
         """Reset the server's round state (for testing between attack scenarios)"""
@@ -206,6 +219,10 @@ class FLController:
             # Wait for updates
             logger.info(f"⏳ Waiting {wait_time}s for client updates...")
             time.sleep(wait_time)
+            
+            # Trigger aggregation
+            logger.info("📊 Triggering model aggregation...")
+            self.trigger_aggregation()
             
             # Check status
             status = self.get_status()
