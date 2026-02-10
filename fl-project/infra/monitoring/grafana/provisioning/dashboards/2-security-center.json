@@ -1,38 +1,245 @@
 {
   "title": "2. FL - Security Center",
-  "uid": "fl-security-center",
-  "tags": ["security", "attacks"],
+  "uid": "fl-security-center-v2",
+  "tags": ["security", "attacks", "federated-learning"],
   "timezone": "browser",
   "refresh": "5s",
+  "editable": true,
   "panels": [
     {
-      "title": "Attack Detection Feed",
-      "type": "logs",
-      "gridPos": { "h": 14, "w": 14, "x": 0, "y": 0 },
-      "datasource": "Loki",
+      "id": 1,
+      "title": "🔴 Total Attacks Detected",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 0 },
+      "datasource": "Prometheus",
       "targets": [
-        { "expr": "{job=\"fl_server\"} | json | event_type=~\"ATTACK_DETECTED|ATTACK_REJECTED\"" }
-      ]
+        {
+          "expr": "sum(fl_attacks_detected_total)",
+          "legendFormat": "Total Attacks",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        },
+        "text": {},
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "unit": "short"
+        }
+      }
     },
     {
-      "title": "Attacks by Type",
+      "id": 2,
+      "title": "⚠️ High Confidence Attacks (>90%)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 4, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(fl_attacks_high_confidence_total)",
+          "legendFormat": "High Confidence",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 3 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "📊 Current Training Round",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 8, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "fl_training_round",
+          "legendFormat": "Round",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Attacks by Type (All Time)",
       "type": "piechart",
-      "gridPos": { "h": 14, "w": 10, "x": 14, "y": 0 },
-      "datasource": "Loki",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 0 },
+      "datasource": "Prometheus",
       "targets": [
-        { "expr": "{job=\"fl_server\"} | json | event_type=\"ATTACK_DETECTED\" | attack_type" }
-      ]
+        {
+          "expr": "sum by (attack_type) (fl_attacks_detected_total)",
+          "legendFormat": "{{attack_type}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": ["value"]
+        },
+        "pieType": "donut"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        }
+      }
     },
     {
-      "title": "High Confidence Threats (>90%)",
-      "type": "table",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "id": 5,
+      "title": "🚨 Attack Detection Feed (Last 100 Events)",
+      "type": "logs",
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 6 },
       "datasource": "Loki",
       "targets": [
-        { "expr": "{job=\"fl_server\"} | json | event_type=\"ATTACK_DETECTED\" | confidence > 0.9" }
+        {
+          "expr": "{container=\"fl_server\"} |= \"event_type\" | json | event_type=~\"ATTACK_DETECTED|ATTACK_REJECTED|SECURITY_ALERT\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "dedupStrategy": "none",
+        "enableLogDetails": true
+      }
+    },
+    {
+      "id": 6,
+      "title": "Attacks Over Time (Rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(fl_attacks_detected_total[1m])) * 60",
+          "legendFormat": "Attacks per minute",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10
+          },
+          "unit": "attacks/min"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Client Security Status",
+      "type": "table",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 18 },
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "fl_attacks_detected_total",
+          "legendFormat": "",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "expr": "fl_updates_accepted_total",
+          "refId": "B",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "expr": "fl_updates_rejected_total",
+          "refId": "C",
+          "format": "table",
+          "instant": true
+        }
       ],
       "transformations": [
-        { "id": "organize", "options": { "renameByName": { "client_id": "Attacker", "attack_type": "Attack", "confidence": "Conf.", "timestamp": "Time" } } }
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "job": true,
+              "instance": true,
+              "__name__": true
+            },
+            "renameByName": {
+              "client_id": "Client",
+              "attack_type": "Attack Type",
+              "Value #A": "Attacks",
+              "Value #B": "Accepted",
+              "Value #C": "Rejected"
+            }
+          }
+        }
       ]
     }
   ]

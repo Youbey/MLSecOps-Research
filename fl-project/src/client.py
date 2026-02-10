@@ -139,21 +139,29 @@ class FLClient:
     
     def train_locally(self, epochs=2):
         self.logger.info(f"Starting local training ({epochs} epochs)")
-        X, y = self.training_data
-        
-        history = self.model.fit(
-            X, y,
-            epochs=epochs,
-            batch_size=8,
-            verbose=0,
-            validation_split=0.2
-        )
-        
-        loss = float(history.history['loss'][-1])
-        accuracy = float(history.history['accuracy'][-1])
-        
-        self.logger.info(f"Training completed - loss={loss:.4f}, accuracy={accuracy:.4f}")
-        return loss, accuracy
+        try:
+            X, y = self.training_data
+            
+            self.logger.debug(f"Training data shape: X={X.shape}, y={y.shape}")
+            
+            history = self.model.fit(
+                X, y,
+                epochs=epochs,
+                batch_size=8,
+                verbose=0,
+                validation_split=0.2
+            )
+            
+            loss = float(history.history['loss'][-1])
+            accuracy = float(history.history['accuracy'][-1])
+            
+            self.logger.info(f"Training completed - loss={loss:.4f}, accuracy={accuracy:.4f}")
+            return loss, accuracy
+        except Exception as e:
+            self.logger.error(f"Training failed with error: {e}")
+            self.logger.exception(e)
+            # Return dummy values so client doesn't crash
+            return 999.9, 0.0
     
     def submit_update(self, loss, accuracy):
         try:
@@ -233,13 +241,34 @@ class FLClient:
                 timeout=timeout
             )
             if response.status_code == 200:
-                return True
+                data = response.json()
+                status = data.get('status')
+                
+                # Only return True if server explicitly says to train
+                if status == 'go_train':
+                    # Update our round number to match server
+                    if 'round' in data:
+                        server_round = data['round']
+                        if server_round != self.current_round:
+                            self.logger.info(f"Server advanced to round {server_round} (was {self.current_round})")
+                            self.current_round = server_round
+                    return True
+                elif status == 'already_served_this_round':
+                    # Client already trained this round, wait for next
+                    self.logger.debug("Already served for current round, waiting for next round...")
+                    return False
+                else:
+                    self.logger.debug(f"Server status: {status}")
+                    return False
+            else:
+                self.logger.warning(f"Unexpected status code from server: {response.status_code}")
+            return False
         except requests.Timeout:
+            self.logger.debug("Timeout waiting for signal")
             return False
         except Exception as e:
             self.logger.error(f"Error waiting for signal: {e}")
             return False
-        return False
 
 def main():
     client_id = os.getenv('CLIENT_ID', 'client_1')
@@ -263,13 +292,23 @@ def main():
     
     # Main loop: wait for signal, train, repeat
     logger.info("Entering main loop - waiting for training signals")
+    consecutive_waits = 0
     while True:
         try:
             # Wait for server to signal a training round
+            logger.debug(f"Polling server for training signal (attempt {consecutive_waits + 1})...")
             if client.wait_for_server_signal(timeout=300):
                 logger.info(f"🔔 Received training signal from server")
-                client.run_training_cycle()
+                consecutive_waits = 0  # Reset counter
+                success = client.run_training_cycle()
+                if success:
+                    logger.info("✓ Training cycle completed successfully")
+                else:
+                    logger.warning("⚠️ Training cycle failed")
             else:
+                consecutive_waits += 1
+                if consecutive_waits % 12 == 0:  # Log every minute (12 * 5s)
+                    logger.info(f"Still waiting for signal... ({consecutive_waits * 5}s elapsed)")
                 logger.debug("No training signal received, waiting...")
                 time.sleep(5)
         except KeyboardInterrupt:
@@ -277,6 +316,7 @@ def main():
             break
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
+            logger.exception(e)  # Print full stack trace
             time.sleep(5)
 
 if __name__ == '__main__':
