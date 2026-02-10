@@ -800,6 +800,10 @@ class FLServer:
         
         # Clear for next round
         self.client_updates.clear()
+        
+        # Reset client signals so they can wait for the next round
+        self.reset_client_signals()
+        
         self.round += 1
         
         return True
@@ -971,20 +975,33 @@ def wait_for_round():
     data = request.json
     client_id = data.get('client_id')
     
+    # Ensure the client is registered
+    if client_id not in server.client_states:
+        logger.warning(f"Client {client_id} not registered, rejecting wait request")
+        return jsonify({'status': 'not_registered'}), 403
+    
+    # Get or create the event for this client
     event = server.waiting_clients[client_id]
+    
+    logger.debug(f"Client {client_id} waiting for round signal...")
     signaled = event.wait(timeout=300)
     
     if signaled:
-        event.clear()
+        # Don't clear the event here - let reset_client_signals do it
+        # This prevents race conditions where a client misses the signal
+        logger.info(f"✓ Client {client_id} received training signal for round {server.round}")
         return jsonify({'status': 'go_train', 'round': server.round})
     else:
+        logger.warning(f"⏱️ Client {client_id} timeout waiting for signal")
         return jsonify({'status': 'timeout'}), 408
 
 @app.route('/trigger_round', methods=['POST'])
 def trigger_round():
     """Trigger a training round"""
-    logger.info(f"Triggering training round {server.round}")
+    logger.info(f"🔔 TRIGGERING training round {server.round}")
+    logger.info(f"📊 Registered clients: {list(server.client_states.keys())}")
     server.signal_clients_for_round()
+    logger.info(f"✓ All {len(server.client_states)} clients signaled to start training")
     return jsonify({'status': 'triggered', 'round': server.round}), 200
 
 @app.route('/reset_round', methods=['POST'])

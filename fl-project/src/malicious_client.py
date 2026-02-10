@@ -588,19 +588,25 @@ class MaliciousClient:
     def wait_for_server_signal(self, timeout=60):
         """Poll server for training signal"""
         try:
+            self.logger.debug(f"Waiting for server signal (timeout={timeout}s)...")
             response = requests.post(
                 f'{self.server_url}/wait_for_round',
                 json={'client_id': self.client_id},
                 timeout=timeout
             )
+            self.logger.debug(f"Received response: {response.status_code}")
             if response.status_code == 200:
+                self.logger.info(f"✓ Signal received from server")
                 return True
+            else:
+                self.logger.warning(f"Unexpected status code: {response.status_code}")
+                return False
         except requests.Timeout:
+            self.logger.warning(f"⏱️ Timeout waiting for signal ({timeout}s)")
             return False
         except Exception as e:
-            self.logger.error(f"Error waiting: {e}")
+            self.logger.error(f"❌ Error waiting for signal: {e}")
             return False
-        return False
 
 def main():
     client_id = os.getenv('CLIENT_ID', 'malicious_client')
@@ -623,19 +629,27 @@ def main():
     
     client = MaliciousClient(client_id, server_url, data_file, attack_mode=attack_mode)
     
-    logger.info("Entering main loop")
+    logger.info("Entering main loop - waiting for training signals")
+    consecutive_timeouts = 0
     while True:
         try:
+            logger.debug(f"Polling for training signal...")
             if client.wait_for_server_signal(timeout=300):
-                logger.info(f"🔔 Training signal received")
+                logger.info(f"🔔 Training signal received - starting training cycle")
+                consecutive_timeouts = 0
                 client.run_training_cycle()
             else:
+                consecutive_timeouts += 1
+                if consecutive_timeouts % 12 == 0:  # Log every hour (5s * 12 = 60s)
+                    logger.info(f"Still waiting for training signal... ({consecutive_timeouts} polls)")
                 time.sleep(5)
         except KeyboardInterrupt:
             logger.info("Shutting down")
             break
         except Exception as e:
-            logger.error(f"Error: {e}")
+            logger.error(f"Unexpected error in main loop: {e}")
+            import traceback
+            traceback.print_exc()
             time.sleep(5)
 
 if __name__ == '__main__':
