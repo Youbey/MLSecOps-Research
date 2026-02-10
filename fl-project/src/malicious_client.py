@@ -596,8 +596,20 @@ class MaliciousClient:
             )
             self.logger.debug(f"Received response: {response.status_code}")
             if response.status_code == 200:
-                self.logger.info(f"✓ Signal received from server")
-                return True
+                data = response.json()
+                status = data.get('status')
+                
+                # Only return True if server explicitly says to train
+                if status == 'go_train':
+                    self.logger.info(f"✓ Signal received from server - GO TRAIN")
+                    return True
+                elif status == 'already_served_this_round':
+                    # Client already trained this round, wait for next
+                    self.logger.debug("Already served for current round, waiting for next...")
+                    return False
+                else:
+                    self.logger.warning(f"Unexpected status: {status}")
+                    return False
             else:
                 self.logger.warning(f"Unexpected status code: {response.status_code}")
                 return False

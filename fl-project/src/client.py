@@ -233,13 +233,24 @@ class FLClient:
                 timeout=timeout
             )
             if response.status_code == 200:
-                return True
+                data = response.json()
+                status = data.get('status')
+                
+                # Only return True if server explicitly says to train
+                if status == 'go_train':
+                    return True
+                elif status == 'already_served_this_round':
+                    # Client already trained this round, wait for next
+                    self.logger.debug("Already served for current round, waiting...")
+                    return False
+                else:
+                    return False
+            return False
         except requests.Timeout:
             return False
         except Exception as e:
             self.logger.error(f"Error waiting for signal: {e}")
             return False
-        return False
 
 def main():
     client_id = os.getenv('CLIENT_ID', 'client_1')

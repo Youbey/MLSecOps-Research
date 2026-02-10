@@ -32,6 +32,7 @@ class FLServer:
         self.client_states = {}
         self.client_updates = {}
         self.waiting_clients = defaultdict(threading.Event)
+        self.clients_served_this_round = set()  # Track which clients already received signal for current round
         self.round_in_progress = False
         self.round_lock = threading.Lock()
         
@@ -801,6 +802,9 @@ class FLServer:
         # Clear for next round
         self.client_updates.clear()
         
+        # Clear the tracking of which clients have been served
+        self.clients_served_this_round.clear()
+        
         # Reset client signals so they can wait for the next round
         self.reset_client_signals()
         
@@ -829,6 +833,9 @@ class FLServer:
         
         # Clear pending updates
         self.client_updates.clear()
+        
+        # Clear the served clients tracking for new round
+        self.clients_served_this_round.clear()
         
         # Reset signals
         self.reset_client_signals()
@@ -980,6 +987,13 @@ def wait_for_round():
         logger.warning(f"Client {client_id} not registered, rejecting wait request")
         return jsonify({'status': 'not_registered'}), 403
     
+    # Check if this client has already been served for the current round
+    if client_id in server.clients_served_this_round:
+        logger.debug(f"Client {client_id} already served for round {server.round}, waiting for next round...")
+        # Client should wait - don't return signal yet
+        # This prevents the tight loop problem
+        return jsonify({'status': 'already_served_this_round'}), 200
+    
     # Get or create the event for this client
     event = server.waiting_clients[client_id]
     
@@ -987,8 +1001,12 @@ def wait_for_round():
     signaled = event.wait(timeout=300)
     
     if signaled:
-        # Don't clear the event here - let reset_client_signals do it
-        # This prevents race conditions where a client misses the signal
+        # Mark this client as served for this round
+        server.clients_served_this_round.add(client_id)
+        
+        # Clear the event for this specific client so they don't receive signal again
+        event.clear()
+        
         logger.info(f"✓ Client {client_id} received training signal for round {server.round}")
         return jsonify({'status': 'go_train', 'round': server.round})
     else:
