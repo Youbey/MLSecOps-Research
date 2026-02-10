@@ -188,6 +188,36 @@ class FLController:
         except KeyboardInterrupt:
             logger.info("Monitoring stopped")
 
+    def trigger_round(self):
+        """Signal the server to start a new training round"""
+        try:
+            # Assuming the endpoint is /start_round based on your logs
+            response = requests.post(f'{self.server_url}/start_round')
+            if response.status_code == 200:
+                logger.info("✓ Training round triggered at server")
+                return True
+            else:
+                logger.error(f"Failed to start round: {response.text}")
+                return False
+        except Exception as e:
+            logger.error(f"Error triggering round: {e}")
+            return False
+
+    def trigger_aggregation(self):
+        """Signal the server to aggregate updates"""
+        try:
+            # Assuming the endpoint is /aggregate
+            response = requests.post(f'{self.server_url}/aggregate')
+            if response.status_code == 200:
+                logger.info("✓ Aggregation triggered")
+                return True
+            else:
+                logger.error(f"Failed to aggregate: {response.text}")
+                return False
+        except Exception as e:
+            logger.error(f"Error triggering aggregation: {e}")
+            return False
+
     def run_training_sequence(self, num_rounds=5, wait_time=60):
         """Run a sequence of training rounds with smart polling"""
         logger.info(f"Starting training sequence for {num_rounds} rounds")
