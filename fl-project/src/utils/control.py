@@ -151,7 +151,7 @@ class FLController:
             )
             if response.status_code == 200:
                 data = response.json()
-                logger.info(f"✓ Aggregation triggered - now at round {data['round']}")
+                logger.info(f"Aggregation triggered - now at round {data['round']}")
                 return True
             else:
                 logger.error(f"Failed to trigger aggregation: {response.status_code}")
@@ -192,9 +192,9 @@ class FLController:
         """Signal the server to start a new training round"""
         try:
             # Assuming the endpoint is /start_round based on your logs
-            response = requests.post(f'{self.server_url}/start_round')
+            response = requests.post(f'{self.server_url}/trigger_round')
             if response.status_code == 200:
-                logger.info("✓ Training round triggered at server")
+                logger.info("Training round triggered at server")
                 return True
             else:
                 logger.error(f"Failed to start round: {response.text}")
