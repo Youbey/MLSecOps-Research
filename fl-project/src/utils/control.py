@@ -147,6 +147,23 @@ class FLController:
         logger.info("Aggregation complete (clients' updates have been processed)")
         return True
     
+    def reset_round(self):
+        """Reset the server's round state (for testing between attack scenarios)"""
+        try:
+            response = requests.post(
+                f'{self.server_url}/reset_round',
+                timeout=5
+            )
+            if response.status_code == 200:
+                logger.info("✓ Server round state reset")
+                return True
+            else:
+                logger.error(f"Failed to reset round: {response.status_code}")
+                return False
+        except Exception as e:
+            logger.error(f"Error resetting round: {e}")
+            return False
+    
     def interactive_monitor(self, interval=10):
         """Continuous monitoring mode"""
         logger.info("Starting interactive monitoring (Ctrl+C to exit)")
@@ -247,12 +264,15 @@ Examples:
   # Monitor continuously
   python control.py --mode monitor --interval 10
   
+  # Reset round state (for testing between attack scenarios)
+  python control.py --mode reset
+  
   # Run 5 training rounds
   python control.py --mode train --rounds 5 --wait 100
         """
     )
     parser.add_argument('--mode', default='monitor',
-                       choices=['status', 'monitor', 'train'],
+                       choices=['status', 'monitor', 'train', 'reset'],
                        help='Operation mode')
     parser.add_argument('--rounds', type=int, default=5,
                        help='Number of rounds for training mode')
@@ -280,6 +300,10 @@ Examples:
     
     elif args.mode == 'monitor':
         controller.interactive_monitor(interval=args.interval)
+    
+    elif args.mode == 'reset':
+        controller.reset_round()
+        controller.print_status()
     
     elif args.mode == 'train':
         controller.run_training_sequence(num_rounds=args.rounds, wait_time=args.wait)
