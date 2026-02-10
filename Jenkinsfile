@@ -145,7 +145,7 @@ pipeline {
                                 exit 0
                             fi
                             echo "Waiting for server... ($i/12)"
-                            sleep 5
+                            sleep 15
                         done
                         echo "Server failed to start"
                         exit 1
@@ -299,7 +299,7 @@ def runAttackScenario(String attackMode) {
             # 2. Recreate ONLY the malicious client. 
             docker compose -f infra/docker/docker-compose-app.yml up -d --no-deps --force-recreate malicious_client
 
-            sleep 5
+            sleep 20
 
             # 4. FIX: Use ${params.FL_ROUNDS} so Jenkins actually passes the value
             docker exec fl_server python3 utils/control.py --mode train --rounds ${params.FL_ROUNDS} --wait ${params.FL_WAIT}
