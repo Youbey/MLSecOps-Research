@@ -4,7 +4,7 @@ networks:
   # Connect to the EXISTING network created by infra
   fl_network:
     external: true
-    name: fl-project_fl_network
+    name: fl_shared_network
 
 services:
   server:

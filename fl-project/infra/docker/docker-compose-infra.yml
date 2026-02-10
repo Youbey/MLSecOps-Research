@@ -3,6 +3,7 @@ version: '3.8'
 networks:
   fl_network:
     driver: bridge
+    name: fl_shared_network
 
 volumes:
   prometheus_data:
