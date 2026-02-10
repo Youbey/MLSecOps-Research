@@ -218,7 +218,11 @@ server = FLServer()
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'healthy', 'round': server.round})
+    return jsonify({
+        'status': 'healthy',
+        'round': server.round,
+        'clients': len(server.client_states)
+    })
 
 @app.route('/init_client', methods=['POST'])
 def init_client():
