@@ -774,8 +774,8 @@ class FLServer:
             self.client_states[client_id]['updates_rejected'] += 1
             record_update_rejected(client_id)
 
-            attack_types = [a['type'] for a in attacks]
-            for attack in attacks:
+            attack_types = [a['type'] for a in attacks_detected]            
+            for attack in attacks_detected:  
                 record_attack_detected(
                     client_id, 
                     attack['type'], 
