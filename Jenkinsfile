@@ -296,12 +296,15 @@ def runAttackScenario(String attackMode) {
             # 1. Update the attack mode in the compose file
             sed -i.bak "s/ATTACK_MODE=.*/ATTACK_MODE=${attackMode}/" infra/docker/docker-compose-app.yml
 
-            # 2. Recreate ONLY the malicious client. 
+            # 2. Force clean malicious client for a new attack
+            docker rm -f fl_malicious_client || true
+
+            # 3. Recreate ONLY the malicious client.
             docker compose -f infra/docker/docker-compose-app.yml up -d --no-deps --force-recreate malicious_client
 
             sleep 20
 
-            # 4. FIX: Use ${params.FL_ROUNDS} so Jenkins actually passes the value
+            # 4. Trigger training
             docker exec fl_server python3 utils/control.py --mode train --rounds ${params.FL_ROUNDS} --wait ${params.FL_WAIT}
             
             echo " Attack scenario ${attackMode} completed"
