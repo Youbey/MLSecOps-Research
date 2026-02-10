@@ -149,6 +149,15 @@ class FLServer:
                 logger.error(f"Invalid public key from {client_id}: {e}")
                 return {'status': 'rejected', 'reason': 'Invalid Public Key Format'}, 400
         
+        # If client is re-registering (e.g., container was recreated),
+        # remove them from the served set so they can participate in current round
+        if client_id in self.client_states:
+            logger.info(f"Client {client_id} re-registering (container recreated)")
+            # Remove from served set to allow participation in current round
+            self.clients_served_this_round.discard(client_id)
+            # Clear their event and re-set it so they can receive the signal
+            self.waiting_clients[client_id].clear()
+        
         if client_id not in self.client_states:
             self.client_states[client_id] = {
                 'registered_at': datetime.now().isoformat(),
