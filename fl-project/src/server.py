@@ -16,9 +16,19 @@ from cryptography.hazmat.primitives import serialization
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s | %(name)s | %(levelname)s | %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%d %H:%M:%S',
+    stream=sys.stdout
 )
+
+from utils.metrics import (
+    record_update_received, record_update_accepted, record_update_rejected,
+    record_attack_detected, update_round, update_client_count,
+    update_client_metrics, create_metrics_endpoint
+)
+from utils.structured_logging import structured_logger
+
 logger = logging.getLogger("SERVER")
+
 
 app = Flask(__name__)
 
@@ -84,6 +94,10 @@ class FLServer:
         
         logger.info(f"✓ FL Server initialized for {self.max_rounds} rounds")
         logger.info(f"Detection enabled: Integrity + Privacy attacks")
+
+        update_round(self.round)
+        update_client_count(0)
+        logger.info("✓ Prometheus metrics initialized")
     
     def _load_or_create_model(self):
         """Load pre-trained model from file, or create new one if not found"""
@@ -171,6 +185,10 @@ class FLServer:
             }
             logger.info(f"Client registered: {client_id} ({num_samples} samples)")
             self._log_audit('CLIENT_REGISTERED', {'client_id': client_id, 'num_samples': num_samples})
+            
+            # NEW: Record in structured logs and update metrics
+            structured_logger.client_registered(client_id, num_samples)
+            update_client_count(len(self.client_states))
         
         # Send initial model weights
         weights = [w.tolist() for w in self.global_model.get_weights()]
@@ -629,10 +647,17 @@ class FLServer:
         
         # Update counter
         self.client_states[client_id]['updates_received'] += 1
+        record_update_received(client_id) 
         self.client_states[client_id]['last_metrics'] = metrics
-        
+        # extract metrics
+        loss = metrics.get('loss', 0)
+        accuracy = metrics.get('accuracy', 0)
+    
+        structured_logger.client_update_received(self.round, client_id, loss, accuracy)
+        update_client_metrics(client_id, loss, accuracy)
         # Get global weights for comparison
         global_weights = self.global_model.get_weights()
+        
         
         # Run all detection methods
         attacks_detected = []
@@ -747,6 +772,24 @@ class FLServer:
             
             # REJECT the update
             self.client_states[client_id]['updates_rejected'] += 1
+            record_update_rejected(client_id)
+
+            attack_types = [a['type'] for a in attacks]
+            for attack in attacks:
+                record_attack_detected(
+                    client_id, 
+                    attack['type'], 
+                    attack.get('confidence', 0)
+                )
+                structured_logger.attack_detected(
+                    self.round,
+                    client_id,
+                    attack['type'],
+                    attack.get('confidence', 0),
+                    attack.get('details')
+                )
+            structured_logger.attack_rejected(self.round, client_id, attack_types)
+
             self._log_audit('UPDATE_REJECTED', {
                 'client_id': client_id,
                 'round': self.round,
@@ -759,6 +802,8 @@ class FLServer:
         logger.info(f"✓ Update from {client_id} ACCEPTED")
         self.client_updates[client_id] = weights
         self.client_states[client_id]['updates_accepted'] += 1
+        record_update_accepted(client_id)
+        structured_logger.client_update_accepted(self.round, client_id)
         
         # Store weights for historical analysis
         if len(self.weight_history) == 0 or self.round not in [h.get('round') for h in self.weight_history]:
@@ -785,6 +830,8 @@ class FLServer:
         
         logger.info(f"Aggregating {len(self.client_updates)} updates")
         
+        structured_logger.aggregation_completed(self.round, len(self.client_updates))
+    
         # FedAvg: Weighted average by num_samples
         num_layers = len(self.global_model.get_weights())
         new_weights = [np.zeros_like(w) for w in self.global_model.get_weights()]
@@ -818,6 +865,7 @@ class FLServer:
         self.reset_client_signals()
         
         self.round += 1
+        update_round(self.round)
         
         return True
     
@@ -827,6 +875,7 @@ class FLServer:
             self.waiting_clients[client_id].set()
         logger.info(f"Signaled all clients to begin round {self.round}")
         self._log_audit('ROUND_STARTED', {'round': self.round, 'num_clients': len(self.client_states)})
+        structured_logger.round_started(self.round, len(self.client_states))
     
     def reset_client_signals(self):
         """Reset all client signals for next round"""
@@ -1063,6 +1112,8 @@ def security_status():
         'attack_types_summary': dict(attack_summary),
         'recent_attacks': server.detected_attacks[-10:] if len(server.detected_attacks) > 10 else server.detected_attacks
     })
+
+create_metrics_endpoint(app)
 
 if __name__ == '__main__':
     logger.info("Starting FL Server with Multi-Attack Detection")
